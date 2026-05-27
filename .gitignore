@@ -1,0 +1,10 @@
+# Build artifacts
+build/
+out/
+
+# Generated files
+src/tc48/gen/*
+include/tc48/gen/*
+
+# IDEs configuration
+compile_flags.txt
