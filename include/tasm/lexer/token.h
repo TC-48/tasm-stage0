@@ -38,9 +38,13 @@ typedef enum TokenType {
     TT_KW_OP_DEC,   /// dec
     TT_KW_OP_CMP,   /// cmp
     TT_KW_OP_JMP,   /// jmp
+
+    _TT_COUNT,
 } TokenType;
 
 typedef struct Token {
     TokenType  type;
     StringView lexeme;
 } Token;
+
+StringView token_type_to_string(TokenType tt);
