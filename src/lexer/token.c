@@ -7,11 +7,15 @@ StringView token_type_to_string_map[] = {
     [TT_COMMA]       = "COMMA",
     [TT_IDENT]       = "IDENT",
     [TT_COLON]       = "COLON",
+    [TT_LPAREN]      = "LPAREN",
+    [TT_RPAREN]      = "RPAREN",
     [TT_NEWLINE]     = "NEWLINE",
 
     [TT_IMM_INT]     = "IMM_INT",
     [TT_IMM_CHAR]    = "IMM_CHAR",
     [TT_IMM_STR]     = "IMM_STR",
+
+    [TT_KW_IF]       = "KW_IF",
 
     [TT_KW_OP_NOP]   = "KW_OP_NOP",
     [TT_KW_OP_HALT]  = "KW_OP_HALT",

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tasm/defs/sv.h>
+#include <stdio.h>
 
 typedef enum TokenType {
     TT_EOF,
@@ -9,11 +10,15 @@ typedef enum TokenType {
     TT_COMMA,   /// ,
     TT_IDENT,   /// anything 
     TT_COLON,   /// :
+    TT_LPAREN,  /// (
+    TT_RPAREN,  /// )
     TT_NEWLINE, /// \n
 
     TT_IMM_INT,  /// 123
     TT_IMM_CHAR, /// 'x'
     TT_IMM_STR,  /// "anything"
+
+    TT_KW_IF, /// if
 
     TT_KW_OP_NOP,   /// nop
     TT_KW_OP_HALT,  /// halt
@@ -48,3 +53,4 @@ typedef struct Token {
 } Token;
 
 StringView token_type_to_string(TokenType tt);
+usize token_print(const Token* tok, FILE* out);
