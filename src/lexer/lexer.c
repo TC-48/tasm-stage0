@@ -17,12 +17,12 @@ static inline bool is_at_end(TasmLexer* lexer) {
     return lexer->index >= lexer->source.len;
 }
 
-static inline TasmLexerResult ret_tok(Token* out, TokenType tt) {
-    *out = (Token) { .type = tt, .lexeme = SV_NULL };
+static inline TasmLexerResult ret_tok(TasmToken* out, TasmTokenType tt) {
+    *out = (TasmToken) { .type = tt, .lexeme = SV_NULL };
     return TASM_LEXRES_OK;
 }
-static inline TasmLexerResult ret_tok_with_lexeme(Token* out, TokenType tt, StringView lexeme) {
-    *out = (Token) { .type = tt, .lexeme = lexeme };
+static inline TasmLexerResult ret_tok_with_lexeme(TasmToken* out, TasmTokenType tt, StringView lexeme) {
+    *out = (TasmToken) { .type = tt, .lexeme = lexeme };
     return TASM_LEXRES_OK;
 }
 
@@ -30,7 +30,7 @@ static inline bool isident(char c) {
     return isalnum(c) || c == '_';
 }
 
-static TasmLexerResult lex_char_lit(TasmLexer* lexer, Token* out_tok) {
+static TasmLexerResult lex_char_lit(TasmLexer* lexer, TasmToken* out_tok) {
     usize start = lexer->index;
     next(lexer); // '
 
@@ -48,7 +48,7 @@ static TasmLexerResult lex_char_lit(TasmLexer* lexer, Token* out_tok) {
     return ret_tok_with_lexeme(out_tok, TT_IMM_CHAR, sv_slice(lexer->source, start, lexer->index));
 }
 
-static TasmLexerResult lex_string_lit(TasmLexer* lexer, Token* out_tok) {
+static TasmLexerResult lex_string_lit(TasmLexer* lexer, TasmToken* out_tok) {
     usize start = lexer->index;
     next(lexer); // "
 
@@ -71,7 +71,7 @@ void tasm_lexer_init(TasmLexer* lexer, StringView source) {
     lexer->index = 0;
 }
 
-TasmLexerResult tasm_lexer_next(TasmLexer* lexer, Token* out_tok) {
+TasmLexerResult tasm_lexer_next(TasmLexer* lexer, TasmToken* out_tok) {
     while (!is_at_end(lexer)) {
         char c = peek(lexer);
 

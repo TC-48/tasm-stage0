@@ -1,6 +1,6 @@
 #include <tasm/lexer/token.h>
 
-StringView token_type_to_string_map[] = {
+static StringView token_type_to_string_map[] = {
     [TT_EOF]         = SV("EOF"),
     
     [TT_DOT]         = SV("DOT"),
@@ -42,16 +42,16 @@ StringView token_type_to_string_map[] = {
     [TT_KW_OP_JMP]   = SV("KW_OP_JMP"),
 };
 
-StringView token_type_to_string(TokenType tt) {
+StringView tasm_token_type_to_string(TasmTokenType tt) {
     if (tt < 0 || tt >= _TT_COUNT) return SV_NULL;
     StringView s = token_type_to_string_map[tt];
     if (sv_is_null(s)) return SV("UNKNOWN");
     return s;
 }
 
-usize token_print(const Token* tok, FILE* out) {
+usize tasm_token_print(const TasmToken* tok, FILE* out) {
     usize bytes_written = 0;
-    StringView type_string = token_type_to_string(tok->type);
+    StringView type_string = tasm_token_type_to_string(tok->type);
 
     bytes_written += sv_print(type_string, out);
 

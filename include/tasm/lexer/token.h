@@ -3,7 +3,7 @@
 #include <tasm/defs/sv.h>
 #include <stdio.h>
 
-typedef enum TokenType {
+typedef enum TasmTokenType {
     TT_EOF,
     
     TT_DOT,     /// .
@@ -45,12 +45,12 @@ typedef enum TokenType {
     TT_KW_OP_JMP,   /// jmp
 
     _TT_COUNT,
-} TokenType;
+} TasmTokenType;
 
-typedef struct Token {
-    TokenType  type;
+typedef struct TasmToken {
+    TasmTokenType  type;
     StringView lexeme;
-} Token;
+} TasmToken;
 
-StringView token_type_to_string(TokenType tt);
-usize token_print(const Token* tok, FILE* out);
+StringView tasm_token_type_to_string(TasmTokenType tt);
+usize tasm_token_print(const TasmToken* tok, FILE* out);

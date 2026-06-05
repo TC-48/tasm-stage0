@@ -14,11 +14,11 @@ int main() {
     TasmLexer lexer;
     tasm_lexer_init(&lexer, the_source_code);
 
-    Token tok;
+    TasmToken tok;
     while (tasm_lexer_next(&lexer, &tok) == TASM_LEXRES_OK) {
         if (tok.type == TT_EOF) break;
 
-        token_print(&tok, stdout);
+        tasm_token_print(&tok, stdout);
         putchar('\n');
     }
 }

@@ -14,4 +14,4 @@ typedef struct TasmLexer {
 } TasmLexer;
 
 void            tasm_lexer_init(TasmLexer* lexer, StringView source);
-TasmLexerResult tasm_lexer_next(TasmLexer* lexer, Token* out_tok);
+TasmLexerResult tasm_lexer_next(TasmLexer* lexer, TasmToken* out_tok);
