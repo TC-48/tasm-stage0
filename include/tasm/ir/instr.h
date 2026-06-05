@@ -2,7 +2,7 @@
 
 #include <tc48/cpu/opcode.h>
 #include <tc48/cpu/instr.h>
-#include <tasm/defs/sv.h>
+#include <strlib/sv.h>
 
 typedef enum TasmWidth {
     TASM_WIDTH_NONE = 0,

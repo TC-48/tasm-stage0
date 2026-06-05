@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tasm/defs/sv.h>
+#include <strlib/sv.h>
 #include <stdio.h>
 
 typedef enum TasmTokenType {

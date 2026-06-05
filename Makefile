@@ -44,7 +44,7 @@ EMU_DIR := $(DEPS_DIR)/tc48-emu
 EMU_GEN_HEADERS := include/tc48/gen/word-lits.h \
                    include/tc48/gen/version.h
 
-COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR) -I$(EMU_DIR)/include
+COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR) -I$(EMU_DIR)/include -I$(DEPS_DIR)/strlib/src
 
 ifeq ($(BUILD),debug)
 	CFLAGS := $(COMMON_CFLAGS) -O0 -g -DTC48_DEBUG -fsanitize=address,undefined
