@@ -12,6 +12,7 @@ endif
 SRC_DIR     := src
 TEST_DIR    := tests
 INCLUDE_DIR := include
+DEPS_DIR    := deps
 
 OBJ_ROOT_DIR := build/$(BUILD)/obj
 DEP_ROOT_DIR := build/$(BUILD)/dep
@@ -37,7 +38,13 @@ CSTD       := -std=c11
 WARNINGS   := -Wall -Wextra -Werror=implicit-fallthrough
 PIC_CFLAGS := -fPIC
 
-COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR)
+# Lib TC-48 Emu is used as a header-only dependency for architecture definitions.
+# It is not linked with the tasm executable. Managed via git submodules in $(DEPS_DIR)/tc48-emu
+EMU_DIR := $(DEPS_DIR)/tc48-emu
+EMU_GEN_HEADERS := include/tc48/gen/word-lits.h \
+                   include/tc48/gen/version.h
+
+COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR) -I$(EMU_DIR)/include
 
 ifeq ($(BUILD),debug)
 	CFLAGS := $(COMMON_CFLAGS) -O0 -g -DTC48_DEBUG -fsanitize=address,undefined
@@ -80,6 +87,9 @@ endif
 
 all: $(TARGET) $(LIB_STATIC) $(LIB_SHARED)
 
+$(EMU_GEN_HEADERS):
+	$(MAKE) -C $(EMU_DIR) $@
+
 $(LIB_STATIC): $(LIB_OBJ_STATIC)
 	@$(call CMD_MKDIR_P,$(dir $@))
 	ar rcs $@ $^
@@ -92,12 +102,12 @@ $(TARGET): $(LIB_STATIC) $(MAIN_OBJ)
 	@$(call CMD_MKDIR_P,$(dir $@))
 	$(CC) $(MAIN_OBJ) $(LIB_STATIC) $(LDFLAGS) -o $@
 
-$(OBJ_ROOT_DIR)/%.o: %.c
+$(OBJ_ROOT_DIR)/%.o: %.c $(EMU_GEN_HEADERS)
 	@$(call CMD_MKDIR_P,$(dir $@))
 	@$(call CMD_MKDIR_P,$(DEP_ROOT_DIR)/$(dir $<))
 	$(CC) $(CFLAGS) -MMD -MP -MF $(DEP_ROOT_DIR)/$*.d -c $< -o $@
 
-$(OBJ_ROOT_DIR)/shared/%.o: %.c
+$(OBJ_ROOT_DIR)/shared/%.o: %.c $(EMU_GEN_HEADERS)
 	@$(call CMD_MKDIR_P,$(dir $@))
 	@$(call CMD_MKDIR_P,$(DEP_ROOT_DIR)/shared/$(dir $<))
 	$(CC) $(CFLAGS) $(PIC_CFLAGS) -MMD -MP -MF $(DEP_ROOT_DIR)/shared/$*.d -c $< -o $@
