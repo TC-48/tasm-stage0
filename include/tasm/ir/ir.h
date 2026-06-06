@@ -9,7 +9,7 @@ typedef struct TasmIR {
     usize capacity;
 } TasmIR;
 
-void tasm_ir_make(TasmIR* ir);
+void tasm_ir_init(TasmIR* ir);
 void tasm_ir_free(TasmIR* ir);
 
 void tasm_ir_add(TasmIR* ir, const TasmIRItem* item);

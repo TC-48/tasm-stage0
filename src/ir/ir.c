@@ -13,7 +13,7 @@ static bool tasm_ir_resize(TasmIR* ir, usize new_capacity) {
     return true;
 }
 
-void tasm_ir_make(TasmIR* ir) {
+void tasm_ir_init(TasmIR* ir) {
     if (!ir) return;
 
     ir->items = NULL;
