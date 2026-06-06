@@ -27,7 +27,7 @@ static inline TasmLexerResult ret_tok_with_lexeme(TasmToken* out, TasmTokenType 
 }
 
 static inline bool isident(char c) {
-    return isalnum(c) || c == '_';
+    return c == '_' || c == '-' || c == '$';
 }
 
 static TasmLexerResult lex_char_lit(TasmLexer* lexer, TasmToken* out_tok) {
@@ -111,9 +111,9 @@ TasmLexerResult tasm_lexer_next(TasmLexer* lexer, TasmToken* out_tok) {
                 return ret_tok_with_lexeme(out_tok, TT_IMM_INT, sv_slice(lexer->source, start, lexer->index));
             }
 
-            if (isalpha(c) || c == '_') {
+            if (isalpha(c) || isident(c)) {
                 usize start = lexer->index;
-                while (!is_at_end(lexer) && isident(peek(lexer))) {
+                while (!is_at_end(lexer) && (isalnum(peek(lexer)) || isident(peek(lexer))) ) {
                     next(lexer);
                 }
                 return ret_tok_with_lexeme(out_tok, TT_IDENT, sv_slice(lexer->source, start, lexer->index));
