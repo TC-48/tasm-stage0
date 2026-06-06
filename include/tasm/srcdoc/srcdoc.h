@@ -20,7 +20,7 @@ void             tasm_srcdoc_init_from_sb_move(TasmSourceDocument* srcdoc, Strin
 TasmSrcdocResult tasm_srcdoc_copy(const TasmSourceDocument* src, TasmSourceDocument* dst);
 void             tasm_srcdoc_move(TasmSourceDocument* src, TasmSourceDocument* dst);
 
-void             tasm_srcdoc_destroy(TasmSourceDocument* srcdoc);
+void             tasm_srcdoc_free(TasmSourceDocument* srcdoc);
 void             tasm_srcdoc_clear(TasmSourceDocument* srcdoc);
 
 TasmSrcdocResult tasm_srcdoc_append_str(TasmSourceDocument* srcdoc, StringView sv);
