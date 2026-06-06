@@ -32,5 +32,5 @@ typedef struct TasmIRItem {
         TasmLabel     label;
         TasmInstr     instr;
         TasmDirective directive;
-    };
+    } as;
 } TasmIRItem;

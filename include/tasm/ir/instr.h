@@ -24,7 +24,7 @@ typedef struct TasmOperand {
     TasmOperandKind kind;
     union {
         tc48_reg_id reg;
-        tc48_imm    imm;
+        tc48_i128b  imm;
         TasmLabel   label;
     };
 } TasmOperand;
