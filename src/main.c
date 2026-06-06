@@ -1,18 +1,17 @@
+#include <tasm/srcdoc/srcdoc.h>
 #include <tasm/lexer/lexer.h>
 
-int main() {
-    StringView the_source_code = SV(
-        "start:\n"
-        "    set r1, 100\n"
-        ".loop: // a comment btw\n"
-        "    dec r1\n"
-        "    cmp r1, 0\n"
-        "    if(eq) halt\n"
-        "    jmp .loop\n"
-    );
+int main(int argc, const char* argv[]) {
+    if (argc != 2) {
+        fputs("usage: tasm src.tasm", stderr);
+        return 1;
+    }
+
+    TasmSourceDocument source;
+    tasm_srcdoc_init_from_file(&source, argv[1]);
 
     TasmLexer lexer;
-    tasm_lexer_init(&lexer, the_source_code);
+    tasm_lexer_init(&lexer, tasm_srcdoc_content(&source));
 
     TasmToken tok;
     while (tasm_lexer_next(&lexer, &tok) == TASM_LEXRES_OK) {
@@ -21,4 +20,6 @@ int main() {
         tasm_token_print(&tok, stdout);
         putchar('\n');
     }
+
+    tasm_srcdoc_free(&source);
 }

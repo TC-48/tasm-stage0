@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tasm/defs/ints.h>
 #include <strlib/sv.h>
 #include <stdio.h>
 

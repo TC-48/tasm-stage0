@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tasm/lexer/token.h>
+#include <tasm/defs/ints.h>
 
 typedef enum TasmLexerResult {
     TASM_LEXRES_OK,
