@@ -10,6 +10,8 @@ static StringView token_type_to_string_map[] = {
     [TT_LPAREN]      = SV("LPAREN"),
     [TT_RPAREN]      = SV("RPAREN"),
     [TT_NEWLINE]     = SV("NEWLINE"),
+    [TT_EXCLAMATION] = SV("EXCLAMATION"),
+    [TT_QUESTION]    = SV("QUESTION"),
 
     [TT_IMM_INT]     = SV("IMM_INT"),
     [TT_IMM_CHAR]    = SV("IMM_CHAR"),
