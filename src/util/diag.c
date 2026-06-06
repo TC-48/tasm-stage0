@@ -1,0 +1,55 @@
+#include <tasm/util/diag.h>
+
+#include <tasm/srcdoc/srcspan.h>
+#include <tasm/srcdoc/srcdoc.h>
+
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+bool tasm_ansi_enabled = true;
+
+static void print_span(TasmSourceSpan span) {
+    if (tasm_srcspan_is_valid(span)) {
+        fprintf(stderr, SV_FMT":%zu:%zu: ", SV_FARG(span.doc->filename), span.start.line, span.start.column);
+    } else {
+        fprintf(stderr, "<unknown>: ");
+    }
+}
+
+#define STUFF(FMT)               \
+    va_list args;                \
+    va_start(args, FMT);         \
+    vfprintf(stderr, FMT, args); \
+    va_end(args);                \
+    fprintf(stderr, "\n");       \
+
+void tasm_report_warn(TasmDiagEngine* engine, TasmSourceSpan span, const char* fmt, ...) {
+    if (engine != NULL) engine->warn_count++;
+    print_span(span);
+
+    if (tasm_ansi_enabled) fprintf(stderr, "\033[1;35mwarning:\033[0m ");
+    else                   fprintf(stderr, "warning: ");
+
+    STUFF(fmt);
+}
+
+void tasm_report_error(TasmDiagEngine* engine, TasmSourceSpan span, const char* fmt, ...) {
+    if (engine != NULL) engine->error_count++;
+    print_span(span);
+
+    if (tasm_ansi_enabled) fprintf(stderr, "\033[1;31merror:\033[0m ");
+    else                   fprintf(stderr, "error: ");
+
+    STUFF(fmt);
+}
+
+_Noreturn void tasm_fail(TasmSourceSpan span, const char* fmt, ...) {
+    print_span(span);
+
+    if (tasm_ansi_enabled) fprintf(stderr, "\033[1;31mfatal error:\033[0m ");
+    else                   fprintf(stderr, "fatal error: ");
+
+    STUFF(fmt);
+    exit(1);
+}
