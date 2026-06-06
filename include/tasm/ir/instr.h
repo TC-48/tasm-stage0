@@ -2,6 +2,8 @@
 
 #include <tc48/cpu/opcode.h>
 #include <tc48/cpu/instr.h>
+
+#include <tasm/ir/label.h>
 #include <strlib/sv.h>
 
 typedef enum TasmWidth {
@@ -23,7 +25,7 @@ typedef struct TasmOperand {
     union {
         tc48_reg_id reg;
         tc48_imm    imm;
-        StringView  label;
+        TasmLabel   label;
     };
 } TasmOperand;
 

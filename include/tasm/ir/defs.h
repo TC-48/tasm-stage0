@@ -29,7 +29,7 @@ typedef enum TasmIRItemKind {
 typedef struct TasmIRItem {
     TasmIRItemKind kind;
     union {
-        StringView    label;
+        TasmLabel     label;
         TasmInstr     instr;
         TasmDirective directive;
     };
