@@ -11,7 +11,7 @@ int main(int argc, const char* argv[]) {
     tasm_srcdoc_init_from_file(&source, argv[1]);
 
     TasmLexer lexer;
-    tasm_lexer_init(&lexer, tasm_srcdoc_content(&source));
+    tasm_lexer_init(&lexer, &source);
 
     TasmToken tok;
     while (tasm_lexer_next(&lexer, &tok) == TASM_LEXRES_OK) {

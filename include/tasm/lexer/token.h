@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tasm/srcdoc/srcspan.h>
 #include <tasm/defs/ints.h>
 #include <strlib/sv.h>
 #include <stdio.h>
@@ -26,8 +27,9 @@ typedef enum TasmTokenType {
 
 typedef struct TasmToken {
     TasmTokenType  type;
-    StringView lexeme;
+    StringView     lexeme;
+    TasmSourceSpan span;
 } TasmToken;
 
 StringView tasm_token_type_to_string(TasmTokenType tt);
-usize tasm_token_print(const TasmToken* tok, FILE* out);
+void tasm_token_print(const TasmToken* tok, FILE* out);

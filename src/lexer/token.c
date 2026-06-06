@@ -25,17 +25,32 @@ StringView tasm_token_type_to_string(TasmTokenType tt) {
     return s;
 }
 
-usize tasm_token_print(const TasmToken* tok, FILE* out) {
-    usize bytes_written = 0;
-    StringView type_string = tasm_token_type_to_string(tok->type);
+static inline void print_quoted(StringView sv, FILE* out) {
+    fputc('"', out);
+    for (const char* c = sv.data; c < sv.data+sv.len; ++c) {
+        switch (*c) {
+        case '\n': fputs("\\n", out);  break;
+        case '\t': fputs("\\t", out);  break;
+        case '\r': fputs("\\r", out);  break;
+        case '\\': fputs("\\\\", out); break;
+        case '"':  fputs("\\\"", out); break;
+        default:   fputc(*c, out);     break;
+        }
+    }
+    fputc('"', out);
+}
 
-    bytes_written += sv_print(type_string, out);
+void tasm_token_print(const TasmToken* tok, FILE* out) {
+    fprintf(out, "%zu:%zu ", tok->span.start.line, tok->span.start.column);
+    StringView type_string = tasm_token_type_to_string(tok->type);
+    sv_print(type_string, out);
 
     if (!sv_is_null(tok->lexeme)) {
-        bytes_written += fputc('(', out) == EOF ? 0 : 1;
-        bytes_written += sv_print(tok->lexeme, out);
-        bytes_written += fputc(')', out) == EOF ? 0 : 1;
+        fputc('(', out);
+        sv_print(tok->lexeme, out);
+        fputc(')', out);
     }
 
-    return bytes_written;
+    fputs(" :: ", out);
+    print_quoted(tasm_srcspan_to_sv(tok->span), out);
 }
