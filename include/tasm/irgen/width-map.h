@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tasm/defs/ints.h>
 #include <tasm/ir/instr.h>
 #include <strlib/sv.h>
 
@@ -11,4 +12,5 @@ typedef struct TasmWidthMapping {
 } TasmWidthMapping;
 
 extern TasmWidthMapping tasm_width_map[];
+extern const usize tasm_width_map_size;
 

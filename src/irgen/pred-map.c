@@ -28,3 +28,6 @@ TasmPredMapping tasm_pred_map[] = {
     MAP("overflow-positive", "vp", TC48_PRED_VP),
     MAP("overflow-negative", "vn", TC48_PRED_VN),
 };
+
+const usize tasm_pred_map_size
+    = sizeof(tasm_pred_map) / sizeof(TasmPredMapping);

@@ -34,3 +34,6 @@ TasmOpcodeMapping tasm_opcode_map[] = {
     MAP("cmp", TASM_OP_CMP),
     MAP("jmp", TASM_OP_JMP),
 };
+
+const usize tasm_opcode_map_size
+    = sizeof(tasm_opcode_map) / sizeof(TasmOpcodeMapping);

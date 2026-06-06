@@ -9,3 +9,5 @@ TasmWidthMapping tasm_width_map[] = {
     MAP(24, "half",    TASM_WIDTH_24),
     MAP(48, "word",    TASM_WIDTH_48),
 };
+
+const usize tasm_width_map_size = 4;
