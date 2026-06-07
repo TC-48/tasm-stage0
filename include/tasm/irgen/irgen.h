@@ -4,6 +4,8 @@
 #include <tasm/util/diag.h>
 #include <tasm/ir/ir.h>
 
+#define TASM_IRGEN_LOOKAHEAD_SIZE 2
+
 typedef struct TasmIRGen {
     TasmDiagEngine* diag;
 
@@ -12,8 +14,8 @@ typedef struct TasmIRGen {
     // but this is not java, so maybe we don't need to
     TasmLexer* lexer;
 
-    bool  has_lookahead;
-    TasmToken lookahead;
+    TasmToken lookahead[TASM_IRGEN_LOOKAHEAD_SIZE];
+    usize     lookahead_count;
 } TasmIRGen;
 
 void tasm_irgen_init(TasmIRGen* irgen, TasmLexer* lexer, TasmDiagEngine* diag);

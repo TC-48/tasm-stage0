@@ -27,7 +27,7 @@ int main(int argc, const char* argv[]) {
 
     TasmIRGen irgen;
     tasm_irgen_init(&irgen, &lexer, &diag);
-    
+
     TasmIR ir = tasm_irgen(&irgen);
     tasm_dump_ir(&ir, stdout);
 

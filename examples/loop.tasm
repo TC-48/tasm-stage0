@@ -2,6 +2,6 @@ start:
     set r1, 100
 .loop: // a comment btw
     dec r1
-    cmp r1, 0
+    cmp! r1, 0
     if(eq) halt
     jmp .loop

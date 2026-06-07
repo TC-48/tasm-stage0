@@ -7,17 +7,28 @@
 #include <tc48/cpu/regs.h>
 #include <strlib/sv.h>
 
-static inline TasmToken peek(TasmIRGen* irgen) {
-    if (!irgen->has_lookahead) {
-        tasm_lexer_next(irgen->lexer, &irgen->lookahead);
-        irgen->has_lookahead = true;
+static void fill_lookahead(TasmIRGen* irgen) {
+    while (irgen->lookahead_count < TASM_IRGEN_LOOKAHEAD_SIZE) {
+        tasm_lexer_next(irgen->lexer, &irgen->lookahead[irgen->lookahead_count++]);
     }
-    return irgen->lookahead;
+}
+
+static inline TasmToken peek_at(TasmIRGen* irgen, usize n) {
+    fill_lookahead(irgen);
+    if (n >= irgen->lookahead_count) return irgen->lookahead[irgen->lookahead_count - 1];
+    return irgen->lookahead[n];
+}
+
+static inline TasmToken peek(TasmIRGen* irgen) {
+    return peek_at(irgen, 0);
 }
 
 static inline TasmToken advance(TasmIRGen* irgen) {
     TasmToken tok = peek(irgen);
-    irgen->has_lookahead = false;
+    for (usize i = 0; i < irgen->lookahead_count - 1; ++i) {
+        irgen->lookahead[i] = irgen->lookahead[i + 1];
+    }
+    irgen->lookahead_count--;
     return tok;
 }
 
@@ -51,29 +62,10 @@ static inline TasmToken expect(TasmIRGen* irgen, TasmTokenType type, const char*
     return tok;
 }
 
-static inline TasmToken expect2(TasmIRGen* irgen, TasmTokenType type1, TasmTokenType type2, const char* msg) {
-    if (check(irgen, type1) || check(irgen, type2)) {
-        return advance(irgen);
-    }
-
-    TasmToken tok = peek(irgen);
-    StringView expected1_sv = tasm_token_type_to_string(type1);
-    StringView expected2_sv = tasm_token_type_to_string(type2);
-    StringView actual_sv = tasm_token_type_to_string(tok.type);
-
-    tasm_report_error(
-        irgen->diag, tok.span, "expected "SV_FMT" or "SV_FMT", got "SV_FMT"%s%s",
-        SV_FARG(expected1_sv), SV_FARG(expected2_sv), SV_FARG(actual_sv),
-        msg != NULL ? ": " : "", msg != NULL ? msg : ""
-    );
-
-    return tok;
-}
-
 void tasm_irgen_init(TasmIRGen* irgen, TasmLexer* lexer, TasmDiagEngine* diag) {
     irgen->lexer = lexer;
     irgen->diag = diag;
-    irgen->has_lookahead = false;
+    irgen->lookahead_count = 0;
 }
 
 // TODO: stub or something
@@ -90,6 +82,39 @@ static bool parse_register(TasmToken tok, tc48_reg_id* out) {
     }
 
     return false;
+}
+
+static TasmOperand parse_operand(TasmIRGen* irgen) {
+    if (match(irgen, TT_DOT)) {
+        TasmToken name = expect(irgen, TT_IDENT, "expected label name after '.' token");
+        return (TasmOperand) {
+            .kind = TASM_OPERAND_LABEL,
+            .label = { .name = name.lexeme, .is_local = true }
+        };
+    }
+
+    TasmToken tok = advance(irgen);
+    if (tok.type == TT_IMM_INT) {
+        tc48_i128b imm = 0;
+        for (size_t i = 0; i < tok.lexeme.len; ++i) {
+            imm = imm * 10 + (tok.lexeme.data[i] - '0');
+        }
+        return (TasmOperand) { .kind = TASM_OPERAND_IMM, .imm = imm };
+    }
+
+    if (tok.type == TT_IDENT) {
+        tc48_reg_id reg;
+        if (parse_register(tok, &reg)) {
+            return (TasmOperand) { .kind = TASM_OPERAND_REG, .reg = reg };
+        }
+        return (TasmOperand) {
+            .kind = TASM_OPERAND_LABEL,
+            .label = { .name = tok.lexeme, .is_local = false }
+        };
+    }
+
+    tasm_report_error(irgen->diag, tok.span, "expected operand");
+    return (TasmOperand) {0};
 }
 
 TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
@@ -118,13 +143,14 @@ TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
     if (!tasm_parse_mnemonic(opcode_tok.lexeme, &opcode)) {
         tasm_report_error(
             irgen->diag, opcode_tok.span,
-            "invalid predicate '"SV_FMT"'", SV_FARG(opcode_tok.lexeme)
+            "invalid mnemonic '"SV_FMT"'", SV_FARG(opcode_tok.lexeme)
         );
     }
 
     TasmWidth width = TASM_WIDTH_NONE;
-    if (match(irgen, TT_DOT)) {
-        TasmToken width_tok = expect2(irgen, TT_IMM_INT, TT_IDENT, "expected operand width after '.' token");
+    if (check(irgen, TT_DOT) && peek_at(irgen, 1).type == TT_IMM_INT) {
+        advance(irgen); // consume '.'
+        TasmToken width_tok = advance(irgen); // consume integer
         if (!tasm_parse_width(width_tok.lexeme, &width)) {
             tasm_report_error(
                 irgen->diag, width_tok.span,
@@ -140,13 +166,27 @@ TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
         wcfr = TC48_WCFR_FULL;
     }
 
-    // TODO: parsing operands
+    TasmInstr instr = {
+        .opcode = opcode, .pred = pred,
+        .width = width, .wcfr = wcfr,
+        .num_operands = 0, .operands = {},
+    };
+
+    if (!check(irgen, TT_NEWLINE) && !check(irgen, TT_EOF)) {
+        instr.operands[instr.num_operands++] = parse_operand(irgen);
+        while (match(irgen, TT_COMMA)) {
+            if (instr.num_operands >= 3) {
+                tasm_report_error(irgen->diag, peek(irgen).span, "too many operands");
+                parse_operand(irgen);
+                continue;
+            }
+            instr.operands[instr.num_operands++] = parse_operand(irgen);
+        }
+    }
 
     return (TasmIRItem) {
         .kind = TASM_IR_INSTR,
-        .as.instr = {
-            .opcode = opcode, .pred = pred, .width = width, .wcfr = wcfr,
-        }
+        .as.instr = instr,
     };
 }
 
