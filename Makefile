@@ -38,11 +38,10 @@ CSTD       := -std=c11
 WARNINGS   := -Wall -Wextra -Werror=implicit-fallthrough
 PIC_CFLAGS := -fPIC
 
-# Lib TC-48 Emu is used as a header-only dependency for architecture definitions.
-# It is not linked with the tasm executable. Managed via git submodules in $(DEPS_DIR)/tc48-emu
 EMU_DIR := $(DEPS_DIR)/tc48-emu
 EMU_GEN_HEADERS := include/tc48/gen/word-lits.h \
                    include/tc48/gen/version.h
+EMU_LIB_STATIC  := $(EMU_DIR)/out/$(BUILD)/lib/libtc48emu.a
 
 COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR) -I$(EMU_DIR)/include -I$(DEPS_DIR)/strlib/src
 
@@ -90,6 +89,9 @@ all: $(TARGET) $(LIB_STATIC) $(LIB_SHARED)
 $(EMU_GEN_HEADERS):
 	$(MAKE) -C $(EMU_DIR) $@
 
+$(EMU_LIB_STATIC): $(EMU_GEN_HEADERS)
+	$(MAKE) -C $(EMU_DIR) libtc48emu BUILD=$(BUILD)
+
 $(LIB_STATIC): $(LIB_OBJ_STATIC)
 	@$(call CMD_MKDIR_P,$(dir $@))
 	ar rcs $@ $^
@@ -98,9 +100,9 @@ $(LIB_SHARED): $(LIB_OBJ_SHARED)
 	@$(call CMD_MKDIR_P,$(dir $@))
 	$(CC) -shared $^ $(LDFLAGS) -o $@
 
-$(TARGET): $(LIB_STATIC) $(MAIN_OBJ)
+$(TARGET): $(LIB_STATIC) $(MAIN_OBJ) $(EMU_LIB_STATIC)
 	@$(call CMD_MKDIR_P,$(dir $@))
-	$(CC) $(MAIN_OBJ) $(LIB_STATIC) $(LDFLAGS) -o $@
+	$(CC) $(MAIN_OBJ) $(LIB_STATIC) $(EMU_LIB_STATIC) $(LDFLAGS) -o $@
 
 $(OBJ_ROOT_DIR)/%.o: %.c $(EMU_GEN_HEADERS)
 	@$(call CMD_MKDIR_P,$(dir $@))
