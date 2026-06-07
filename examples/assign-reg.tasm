@@ -1,0 +1,2 @@
+add.6 r0, raz, 123
+halt

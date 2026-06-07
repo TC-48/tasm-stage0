@@ -1,0 +1,11 @@
+start:
+    add.12 r0, raz, 100
+    add.24 rsp, raz, raz
+    add.48 rip, raz, .loop
+    halt // this should be skipped
+
+.loop:
+    sub.12! r0, 1
+    if(zr) halt
+    add.24 rsp, 27
+    add.48 rip, raz, .loop

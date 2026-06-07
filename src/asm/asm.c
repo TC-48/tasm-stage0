@@ -1,0 +1,428 @@
+#include <tasm/asm/asm.h>
+#include <stdlib.h>
+
+void tasm_asm_init(TasmAssembler* as, const TasmIR* ir, TasmDiagEngine* diag) {
+    as->ir = ir;
+    as->diag = diag;
+    as->item_addresses = calloc(ir->count, sizeof(tc48_word));
+    as->symbols = malloc(ir->count * sizeof(TasmSymbol));
+    as->symbol_count = 0;
+    as->current_addr = 0;
+    as->current_scope_id = (usize)-1;
+}
+
+void tasm_asm_free(TasmAssembler* as) {
+    if (as->item_addresses) free(as->item_addresses);
+    if (as->symbols) free(as->symbols);
+    as->item_addresses = NULL;
+    as->symbols = NULL;
+}
+
+static void
+    pass1(TasmAssembler*),
+    pass2(TasmAssembler*, TasmLIR*);
+
+TasmLIR tasm_assemble(TasmAssembler* as) {
+    TasmLIR lir;
+    tasm_lir_init(&lir);
+
+    pass1(as);
+    pass2(as, &lir);
+
+    return lir;
+}
+
+static TasmSymbol* find_symbol(TasmAssembler* as, StringView name, bool is_local, usize scope) {
+    for (usize i = 0; i < as->symbol_count; i++) {
+        TasmSymbol* s = &as->symbols[i];
+        if (!sv_eql(s->name, name)) continue;
+
+        if (is_local) {
+            if (s->is_local && s->parent_global_id == scope) return s;
+        } else {
+            if (!s->is_local) return s;
+        }
+    }
+    return NULL;
+}
+
+static bool validate_and_inspect(
+    TasmAssembler* as, const TasmInstr* instr,
+    enum tc48_instr_format* fmt, enum tc48_operand_width* width
+) {
+    if (instr->width == TASM_WIDTH_NONE) {
+        if (instr->opcode == TASM_OP_NOP || instr->opcode == TASM_OP_HALT) {
+            *width = TC48_OPERAND_WIDTH_6;
+        } else {
+            tasm_report_error(as->diag, instr->span, "inferring width is not supported yet");
+            return false;
+        }
+    } else {
+        *width = (enum tc48_operand_width)instr->width;
+    }
+
+    switch (instr->opcode) {
+    case TASM_OP_MIN: case TASM_OP_MAX: case TASM_OP_ROT:
+    case TASM_OP_SHR: case TASM_OP_SHL:
+    case TASM_OP_ADD: case TASM_OP_SUB:
+    case TASM_OP_UMUL: case TASM_OP_SMUL:
+    case TASM_OP_UDIV: case TASM_OP_SDIV:
+    {
+        if (instr->num_operands != 3 && instr->num_operands != 2) {
+            tasm_report_error(as->diag, instr->span, "invalid operand count: expected 3 or 2");
+            return false;
+        }
+
+        const TasmOperand* op0 = &instr->operands[0];
+        const TasmOperand* op1 = (instr->num_operands == 2) ? &instr->operands[0] : &instr->operands[1];
+        const TasmOperand* op2 = (instr->num_operands == 2) ? &instr->operands[1] : &instr->operands[2];
+
+        if (op0->kind != TASM_OPERAND_REG || op1->kind != TASM_OPERAND_REG) {
+            tasm_report_error(as->diag, instr->span, "incorrect operand kind: expected register");
+            return false;
+        }
+
+        switch (op2->kind) {
+        case TASM_OPERAND_REG:
+            *fmt = TC48_INSTR_FORMAT_RRR;
+            break;
+        case TASM_OPERAND_IMM:
+            *fmt = TC48_INSTR_FORMAT_RRI;
+            break;
+        case TASM_OPERAND_LABEL:
+            if (*width != TC48_OPERAND_WIDTH_48) {
+                tasm_report_error(as->diag, op2->span, "label can be used as imm only in instructions with operand width 48");
+                return false;
+            }
+            *fmt = TC48_INSTR_FORMAT_RRI;
+            break;
+        default:
+            return false;
+        }
+        return true;
+    }
+
+    case TASM_OP_NOT: case TASM_OP_NEG:
+    {
+        if (instr->num_operands != 2 && instr->num_operands != 1) {
+            tasm_report_error(as->diag, instr->span, "invalid operand count: expected 2 or 1");
+            return false;
+        }
+
+        const TasmOperand* op0 = &instr->operands[0];
+        const TasmOperand* op1 = (instr->num_operands == 1) ? &instr->operands[0] : &instr->operands[1];
+
+        if (op0->kind != TASM_OPERAND_REG) {
+            tasm_report_error(as->diag, instr->span, "incorrect operand kind: expected register");
+            return false;
+        }
+
+        switch (op1->kind) {
+        case TASM_OPERAND_REG:
+            *fmt = TC48_INSTR_FORMAT_RR;
+            break;
+        case TASM_OPERAND_IMM:
+            *fmt = TC48_INSTR_FORMAT_RI;
+            break;
+        case TASM_OPERAND_LABEL:
+            if (*width != TC48_OPERAND_WIDTH_48) {
+                tasm_report_error(as->diag, instr->span, "label can be used as imm only in instructions with operand width 48");
+                return false;
+            }
+            *fmt = TC48_INSTR_FORMAT_RI;
+            break;
+        default:
+            return false;
+        }
+
+        return true;
+    }
+
+    case TASM_OP_INC: case TASM_OP_DEC:
+    {
+        if (instr->num_operands != 2 && instr->num_operands != 1) {
+            tasm_report_error(as->diag, instr->span, "invalid operand count: expected 2 or 1");
+            return false;
+        }
+
+        if (instr->operands[0].kind != TASM_OPERAND_REG) {
+            tasm_report_error(as->diag, instr->operands[0].span, "expected register");
+            return false;
+        }
+        if (instr->num_operands == 2 && instr->operands[1].kind != TASM_OPERAND_REG) {
+            tasm_report_error(as->diag, instr->operands[1].span, "expected register for source");
+            return false;
+        }
+
+        *fmt = TC48_INSTR_FORMAT_RRI;
+        return true;
+    }
+
+
+    case TASM_OP_HALT: case TASM_OP_NOP:
+        if (instr->num_operands != 0) {
+            tasm_report_error(as->diag, instr->span, "invalid operand count: expected 0");
+            return false;
+        }
+        if (instr->width != TASM_WIDTH_NONE) {
+            tasm_report_error(as->diag, instr->span, "expected no operand width specified");
+            return false;
+        }
+
+        *fmt = TC48_INSTR_FORMAT_NONE;
+        return true;
+
+    case TASM_OP_SET:
+    case TASM_OP_CMP:
+    case TASM_OP_JMP:
+    default:
+        tasm_fail(instr->span, "instruction not implemented");
+        return false;
+    }
+}
+
+static tc48_word get_imm_size(enum tc48_operand_width width) {
+    switch (width) {
+    case TC48_OPERAND_WIDTH_6:  return 1;
+    case TC48_OPERAND_WIDTH_12: return 2;
+    case TC48_OPERAND_WIDTH_24: return 4;
+    case TC48_OPERAND_WIDTH_48: return 8;
+    }
+    return 0;
+}
+
+#define REG_SIZE_TRYTES    1
+#define HEADER_SIZE_TRYTES 2
+
+static tc48_word get_instr_size(TasmAssembler* as, const TasmInstr* instr) {
+    enum tc48_instr_format fmt;
+    enum tc48_operand_width width;
+    if (!validate_and_inspect(as, instr, &fmt, &width)) {
+        return 0;
+    }
+
+    tc48_word size = HEADER_SIZE_TRYTES;
+
+    switch (fmt) {
+    case TC48_INSTR_FORMAT_NONE:
+        break;
+    case TC48_INSTR_FORMAT_R:
+        size += REG_SIZE_TRYTES; break;
+    case TC48_INSTR_FORMAT_I:
+        size += get_imm_size(width); break;
+    case TC48_INSTR_FORMAT_RR:
+        size += REG_SIZE_TRYTES * 2; break;
+    case TC48_INSTR_FORMAT_RRR:
+        size += REG_SIZE_TRYTES * 3; break;
+    case TC48_INSTR_FORMAT_RI:
+        size += REG_SIZE_TRYTES + get_imm_size(width); break;
+    case TC48_INSTR_FORMAT_RRI:
+        size += (REG_SIZE_TRYTES * 2) + get_imm_size(width); break;
+    }
+    return size;
+}
+
+static tc48_word get_directive_size(TasmDirectiveKind kind) {
+    switch (kind) {
+    case TASM_DIR_WORD:    return 8;
+    case TASM_DIR_HALF:    return 4;
+    case TASM_DIR_QUARTER: return 2;
+    case TASM_DIR_TRYTE:   return 1;
+    case TASM_DIR_ORG:     return 0;
+    }
+    return 0;
+}
+
+static bool resolve_imm(TasmAssembler* as, const TasmOperand* op, tc48_word* out) {
+    if (op->kind == TASM_OPERAND_IMM) {
+        *out = (tc48_word)op->imm;
+        return true;
+    }
+    if (op->kind == TASM_OPERAND_LABEL) {
+        TasmSymbol* s = find_symbol(as, op->label.name, op->label.is_local, as->current_scope_id);
+        if (!s) {
+            tasm_report_error(as->diag, op->span, "undefined symbol: "SV_FMT, SV_FARG(op->label.name));
+            return false;
+        }
+        *out = as->item_addresses[s->id];
+        return true;
+    }
+    return false;
+}
+
+static void fill_imm(tc48_imm* imm, enum tc48_operand_width width, tc48_word val) {
+    switch (width) {
+    case TC48_OPERAND_WIDTH_6:  imm->i6  = (tc48_tryte)val;   break;
+    case TC48_OPERAND_WIDTH_12: imm->i12 = (tc48_quarter)val; break;
+    case TC48_OPERAND_WIDTH_24: imm->i24 = (tc48_half)val;    break;
+    case TC48_OPERAND_WIDTH_48: imm->i48 = (tc48_word)val;    break;
+    }
+}
+
+static bool lower_instr(TasmAssembler* as, const TasmInstr* instr, tc48_instr* out) {
+    enum tc48_instr_format fmt;
+    enum tc48_operand_width width;
+    if (!validate_and_inspect(as, instr, &fmt, &width)) return false;
+
+    out->format = (tc48_doublet)fmt;
+    out->width = (tc48_doublet)width;
+    out->wcfr = instr->wcfr;
+    out->pred = (tc48_triplet)instr->pred;
+
+    switch (instr->opcode) {
+    case TASM_OP_NOP:  out->opcode = TC48_OP_NOP; return true;
+    case TASM_OP_HALT: out->opcode = TC48_OP_HALT; return true;
+
+    case TASM_OP_MIN: out->opcode = TC48_OP_MIN; goto op_3;
+    case TASM_OP_MAX: out->opcode = TC48_OP_MAX; goto op_3;
+    case TASM_OP_ROT: out->opcode = TC48_OP_ROT; goto op_3;
+    case TASM_OP_SHL: out->opcode = TC48_OP_SHL; goto op_3;
+    case TASM_OP_SHR: out->opcode = TC48_OP_SHR; goto op_3;
+    case TASM_OP_ADD: out->opcode = TC48_OP_ADD; goto op_3;
+    case TASM_OP_SUB: out->opcode = TC48_OP_SUB; goto op_3;
+    case TASM_OP_UMUL: out->opcode = TC48_OP_UMUL; goto op_3;
+    case TASM_OP_UDIV: out->opcode = TC48_OP_UDIV; goto op_3;
+    case TASM_OP_SMUL: out->opcode = TC48_OP_SMUL; goto op_3;
+    case TASM_OP_SDIV: out->opcode = TC48_OP_SDIV; goto op_3;
+
+    case TASM_OP_NOT: out->opcode = TC48_OP_NOT; goto op_2;
+    case TASM_OP_NEG: out->opcode = TC48_OP_NEG; goto op_2;
+
+    case TASM_OP_INC: out->opcode = TC48_OP_ADD; goto op_inc_dec;
+    case TASM_OP_DEC: out->opcode = TC48_OP_SUB; goto op_inc_dec;
+
+    default: return false;
+    }
+
+op_3:
+    {
+        tc48_reg_id r1 = instr->operands[0].reg;
+        tc48_reg_id r2 = (instr->num_operands == 3) ? instr->operands[1].reg : r1;
+        const TasmOperand* op3 = &instr->operands[instr->num_operands - 1];
+
+        if (fmt == TC48_INSTR_FORMAT_RRR) {
+            out->operands.rrr.r1 = r1;
+            out->operands.rrr.r2 = r2;
+            out->operands.rrr.r3 = op3->reg;
+        } else {
+            out->operands.rri.r1 = r1;
+            out->operands.rri.r2 = r2;
+            tc48_word imm_val;
+            if (!resolve_imm(as, op3, &imm_val)) return false;
+            fill_imm(&out->operands.rri.imm, width, imm_val);
+        }
+        return true;
+    }
+
+op_2:
+    {
+        tc48_reg_id r1 = instr->operands[0].reg;
+        const TasmOperand* op2 = &instr->operands[instr->num_operands - 1];
+
+        if (fmt == TC48_INSTR_FORMAT_RR) {
+            out->operands.rr.r1 = r1;
+            out->operands.rr.r2 = op2->reg;
+        } else {
+            out->operands.ri.r1 = r1;
+            tc48_word imm_val;
+            if (!resolve_imm(as, op2, &imm_val)) return false;
+            fill_imm(&out->operands.ri.imm, width, imm_val);
+        }
+        return true;
+    }
+
+op_inc_dec:
+    {
+        tc48_reg_id r1 = instr->operands[0].reg;
+        tc48_reg_id r2 = (instr->num_operands == 2) ? instr->operands[1].reg : r1;
+        out->operands.rri.r1 = r1;
+        out->operands.rri.r2 = r2;
+        fill_imm(&out->operands.rri.imm, width, 1);
+        return true;
+    }
+}
+
+static bool lower_directive(TasmAssembler* as, const TasmDirective* dir, tc48_word* out) {
+    // already handled in pass1()
+    if (dir->kind == TASM_DIR_ORG) return false;
+
+    if (dir->value.kind == TASM_OPERAND_IMM) {
+        *out = (tc48_word)dir->value.imm;
+        return true;
+    } else if (dir->value.kind == TASM_OPERAND_LABEL) {
+        TasmSymbol* s = find_symbol(as, dir->value.label.name, dir->value.label.is_local, as->current_scope_id);
+        if (!s) {
+            tasm_report_error(as->diag, dir->value.span, "undefined symbol: "SV_FMT, SV_FARG(dir->value.label.name));
+            return false;
+        }
+        *out = as->item_addresses[s->id];
+        return true;
+    }
+    return false;
+}
+
+static void pass1(TasmAssembler* as) {
+    tc48_word current_addr = 0;
+    as->current_scope_id = (usize)-1;
+
+    for (usize i = 0; i < as->ir->count; i++) {
+        TasmIRItem* item = &as->ir->items[i];
+        as->item_addresses[item->id] = current_addr;
+
+        if (item->kind == TASM_IR_LABEL) {
+            bool is_local = item->as.label.is_local;
+            if (!is_local) as->current_scope_id = item->id;
+
+            as->symbols[as->symbol_count++] = (TasmSymbol){
+                .name = item->as.label.name,
+                .id = item->id,
+                .parent_global_id = is_local ? as->current_scope_id : (usize)-1,
+                .is_local = is_local
+            };
+        } else if (item->kind == TASM_IR_DIRECTIVE) {
+            if (item->as.directive.kind == TASM_DIR_ORG) {
+                current_addr = item->as.directive.value.imm;
+            } else {
+                current_addr += get_directive_size(item->as.directive.kind);
+            }
+        } else if (item->kind == TASM_IR_INSTR) {
+            current_addr += get_instr_size(as, &item->as.instr);
+        }
+    }
+}
+
+static void pass2(TasmAssembler* as, TasmLIR* lir) {
+    as->current_scope_id = (usize)-1;
+
+    for (usize i = 0; i < as->ir->count; i++) {
+        TasmIRItem* item = &as->ir->items[i];
+        tc48_word addr = as->item_addresses[item->id];
+
+        if (item->kind == TASM_IR_LABEL && !item->as.label.is_local) {
+            as->current_scope_id = item->id;
+            continue;
+        }
+
+        if (item->kind == TASM_IR_INSTR) {
+            TasmLIRItem lir_item = { .address = addr, .kind = TASM_LIR_INSTR };
+            if (lower_instr(as, &item->as.instr, &lir_item.as.instr)) {
+                tasm_lir_add(lir, &lir_item);
+            }
+        } else if (item->kind == TASM_IR_DIRECTIVE && item->as.directive.kind != TASM_DIR_ORG) {
+            TasmLIRItem lir_item = { .address = addr };
+
+            switch (item->as.directive.kind) {
+                case TASM_DIR_TRYTE:   lir_item.kind = TASM_LIR_DATA_TRYTE;   break;
+                case TASM_DIR_QUARTER: lir_item.kind = TASM_LIR_DATA_QUARTER; break;
+                case TASM_DIR_HALF:    lir_item.kind = TASM_LIR_DATA_HALF;    break;
+                case TASM_DIR_WORD:    lir_item.kind = TASM_LIR_DATA_WORD;    break;
+                default: break;
+            }
+
+            if (lower_directive(as, &item->as.directive, &lir_item.as.data)) {
+                tasm_lir_add(lir, &lir_item);
+            }
+        }
+
+    }
+}

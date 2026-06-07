@@ -8,11 +8,11 @@
 #include <strlib/sv.h>
 
 typedef enum TasmWidth {
-    TASM_WIDTH_NONE = 0,
-    TASM_WIDTH_6    = 1,
-    TASM_WIDTH_12   = 2,
-    TASM_WIDTH_24   = 3,
-    TASM_WIDTH_48   = 4,
+    TASM_WIDTH_6    = TC48_OPERAND_WIDTH_6,
+    TASM_WIDTH_12   = TC48_OPERAND_WIDTH_12,
+    TASM_WIDTH_24   = TC48_OPERAND_WIDTH_24,
+    TASM_WIDTH_48   = TC48_OPERAND_WIDTH_48,
+    TASM_WIDTH_NONE,
 } TasmWidth;
 
 typedef enum TasmOperandKind {
@@ -54,14 +54,14 @@ typedef enum TasmOpcode {
     TASM_OP_SMUL,  // operands: reg, [reg], reg/imm
     TASM_OP_SDIV,  // operands: reg, [reg], reg/imm
 
-    TASM_OP_IN,    // operands: reg, reg/reg+imm/imm
-    TASM_OP_OUT,   // operands: reg, reg/reg+imm/imm
-    TASM_OP_LOAD,  // operands: reg, reg/reg+imm/imm
-    TASM_OP_STORE, // operands: reg, reg/reg+imm/imm
+    TASM_OP_IN,    // operands: reg, reg/imm/(reg, imm)
+    TASM_OP_OUT,   // operands: reg, reg/imm/(reg, imm)
+    TASM_OP_LOAD,  // operands: reg, reg/imm/(reg, imm)
+    TASM_OP_STORE, // operands: reg, reg/imm/(reg, imm)
 
     TASM_OP_SET,   // operands: reg, reg/imm
-    TASM_OP_INC,   // operands: reg, [reg]
-    TASM_OP_DEC,   // operands: reg, [reg]
+    TASM_OP_INC,   // operands: reg, [reg/imm]
+    TASM_OP_DEC,   // operands: reg, [reg/imm]
     TASM_OP_CMP,   // operands: reg, reg/imm
     TASM_OP_JMP,   // operands: reg/imm
 } TasmOpcode;

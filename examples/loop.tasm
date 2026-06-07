@@ -1,6 +1,7 @@
-start:
+start: // global_labels["start"] = 0
     set r1, 100
-.loop: // a comment btw
+    jmp .loop
+.loop: // local_labels["loop"] = 3
     dec r1
     cmp! r1, 0
     if(eq) halt
