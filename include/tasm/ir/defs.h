@@ -2,6 +2,7 @@
 
 #include <tasm/ir/instr.h>
 #include <tasm/defs/ints.h>
+#include <tasm/srcdoc/srcspan.h>
 
 #include <tc48/cpu/opcode.h>
 #include <tc48/cpu/instr.h>
@@ -18,6 +19,7 @@ typedef enum TasmDirectiveKind {
 
 typedef struct TasmDirective {
     TasmDirectiveKind kind;
+    TasmSourceSpan    span;
     TasmOperand       value;
 } TasmDirective;
 
@@ -30,6 +32,7 @@ typedef enum TasmIRItemKind {
 typedef struct TasmIRItem {
     usize id;
     TasmIRItemKind kind;
+    TasmSourceSpan span;
     union {
         TasmLabel     label;
         TasmInstr     instr;

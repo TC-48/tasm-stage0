@@ -85,11 +85,13 @@ static bool parse_register(TasmToken tok, tc48_reg_id* out) {
 }
 
 static TasmOperand parse_operand(TasmIRGen* irgen) {
-    if (match(irgen, TT_DOT)) {
+    if (check(irgen, TT_DOT)) {
+        TasmToken dot  = advance(irgen);
         TasmToken name = expect(irgen, TT_IDENT, "expected label name after '.' token");
         return (TasmOperand) {
             .kind = TASM_OPERAND_LABEL,
-            .label = { .name = name.lexeme, .is_local = true }
+            .span = tasm_srcspan_merge(dot.span, name.span),
+            .label = { .name = name.lexeme, .span = name.span, .is_local = true }
         };
     }
 
@@ -99,27 +101,38 @@ static TasmOperand parse_operand(TasmIRGen* irgen) {
         for (size_t i = 0; i < tok.lexeme.len; ++i) {
             imm = imm * 10 + (tok.lexeme.data[i] - '0');
         }
-        return (TasmOperand) { .kind = TASM_OPERAND_IMM, .imm = imm };
+        return (TasmOperand) {
+            .kind = TASM_OPERAND_IMM,
+            .span = tok.span,
+            .imm = imm
+        };
     }
 
     if (tok.type == TT_IDENT) {
         tc48_reg_id reg;
         if (parse_register(tok, &reg)) {
-            return (TasmOperand) { .kind = TASM_OPERAND_REG, .reg = reg };
+            return (TasmOperand) {
+                .kind = TASM_OPERAND_REG,
+                .span = tok.span,
+                .reg = reg
+            };
         }
         return (TasmOperand) {
             .kind = TASM_OPERAND_LABEL,
-            .label = { .name = tok.lexeme, .is_local = false }
+            .span = tok.span,
+            .label = { .name = tok.lexeme, .span = tok.span, .is_local = false }
         };
     }
 
     tasm_report_error(irgen->diag, tok.span, "expected operand");
-    return (TasmOperand) {0};
+    return (TasmOperand) { .span = tok.span };
 }
 
 TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
+    TasmSourceSpan span = ident.span;
     TasmPred pred = TC48_PRED_AW;
     bool had_if = false;
+
     if (sv_eql(ident.lexeme, SV("if"))) {
         had_if = true;
         expect(irgen, TT_LPAREN, "expected '(' after 'if' token");
@@ -132,13 +145,15 @@ TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
             );
         }
 
-        expect(irgen, TT_RPAREN, "expected ')' after predicate");
+        TasmToken rparen = expect(irgen, TT_RPAREN, "expected ')' after predicate");
+        span = tasm_srcspan_merge(span, rparen.span);
     }
 
     TasmOpcode opcode;
     TasmToken opcode_tok =
         had_if ? expect(irgen, TT_IDENT, "expected instruction mnemonic")
                : ident;
+    span = tasm_srcspan_merge(span, opcode_tok.span);
 
     if (!tasm_parse_mnemonic(opcode_tok.lexeme, &opcode)) {
         tasm_report_error(
@@ -151,6 +166,7 @@ TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
     if (check(irgen, TT_DOT) && peek_at(irgen, 1).type == TT_IMM_INT) {
         advance(irgen); // consume '.'
         TasmToken width_tok = advance(irgen); // consume integer
+        span = tasm_srcspan_merge(span, width_tok.span);
         if (!tasm_parse_width(width_tok.lexeme, &width)) {
             tasm_report_error(
                 irgen->diag, width_tok.span,
@@ -160,9 +176,13 @@ TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
     }
 
     TasmWCFR wcfr = TC48_WCFR_NONE;
-    if (match(irgen, TT_QUESTION)) {
+    if (check(irgen, TT_QUESTION)) {
+        TasmToken tok = advance(irgen);
+        span = tasm_srcspan_merge(span, tok.span);
         wcfr = TC48_WCFR_STAT;
-    } else if (match(irgen, TT_EXCLAMATION)) {
+    } else if (check(irgen, TT_EXCLAMATION)) {
+        TasmToken tok = advance(irgen);
+        span = tasm_srcspan_merge(span, tok.span);
         wcfr = TC48_WCFR_FULL;
     }
 
@@ -170,35 +190,49 @@ TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
         .opcode = opcode, .pred = pred,
         .width = width, .wcfr = wcfr,
         .num_operands = 0, .operands = {},
+        .span = span,
     };
 
     if (!check(irgen, TT_NEWLINE) && !check(irgen, TT_EOF)) {
-        instr.operands[instr.num_operands++] = parse_operand(irgen);
+        TasmOperand op = parse_operand(irgen);
+        instr.operands[instr.num_operands++] = op;
+        span = tasm_srcspan_merge(span, op.span);
+
         while (match(irgen, TT_COMMA)) {
             if (instr.num_operands >= 3) {
                 tasm_report_error(irgen->diag, peek(irgen).span, "too many operands");
                 parse_operand(irgen);
                 continue;
             }
-            instr.operands[instr.num_operands++] = parse_operand(irgen);
+            TasmOperand op = parse_operand(irgen);
+            instr.operands[instr.num_operands++] = op;
+            span = tasm_srcspan_merge(span, op.span);
         }
     }
 
+    instr.span = span;
+
     return (TasmIRItem) {
         .kind = TASM_IR_INSTR,
+        .span = span,
         .as.instr = instr,
     };
 }
 
 TasmIRItem tasm_irgen_item(TasmIRGen* irgen) {
-    if (match(irgen, TT_DOT)) {
+    if (check(irgen, TT_DOT)) {
+        TasmToken dot   = advance(irgen);
         TasmToken name  = expect(irgen, TT_IDENT, "expected label name after '.' token");
         TasmToken colon = expect(irgen, TT_COLON, NULL);
 
+        TasmSourceSpan span = tasm_srcspan_merge(dot.span, colon.span);
+
         return (TasmIRItem) {
             .kind = TASM_IR_LABEL,
+            .span = span,
             .as.label = {
                 .name = name.lexeme,
+                .span = name.span,
                 .is_local = true,
             }
         };
@@ -210,8 +244,10 @@ TasmIRItem tasm_irgen_item(TasmIRGen* irgen) {
             TasmToken colon = advance(irgen);
             return (TasmIRItem) {
                 .kind = TASM_IR_LABEL,
+                .span = tasm_srcspan_merge(name.span, colon.span),
                 .as.label = {
                     .name = name.lexeme,
+                    .span = name.span,
                     .is_local = false,
                 }
             };

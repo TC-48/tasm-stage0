@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tasm/srcdoc/srcspan.h>
 #include <tc48/cpu/opcode.h>
 #include <tc48/cpu/instr.h>
 
@@ -22,6 +23,7 @@ typedef enum TasmOperandKind {
 
 typedef struct TasmOperand {
     TasmOperandKind kind;
+    TasmSourceSpan  span;
     union {
         tc48_reg_id reg;
         tc48_i128b  imm;
@@ -33,8 +35,8 @@ typedef struct TasmOperand {
 // [x] - optional operand
 // x/y - x or y
 typedef enum TasmOpcode {
-    TASM_OP_NOP,   // operands: none  
-    TASM_OP_HALT,  // operands: none  
+    TASM_OP_NOP,   // operands: none
+    TASM_OP_HALT,  // operands: none
 
     TASM_OP_MIN,   // operands: reg, [reg], reg/imm
     TASM_OP_MAX,   // operands: reg, [reg], reg/imm
@@ -72,7 +74,9 @@ typedef struct TasmInstr {
     TasmPred   pred;
     TasmWCFR   wcfr;
     TasmWidth  width;
-    
+
     TasmOperand operands[3];
     tc48_u8b    num_operands;
+
+    TasmSourceSpan span;
 } TasmInstr;
