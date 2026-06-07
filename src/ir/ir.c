@@ -14,16 +14,12 @@ static bool tasm_ir_resize(TasmIR* ir, usize new_capacity) {
 }
 
 void tasm_ir_init(TasmIR* ir) {
-    if (!ir) return;
-
     ir->items = NULL;
     ir->count = 0;
     ir->capacity = 0;
 }
 
 void tasm_ir_free(TasmIR* ir) {
-    if (!ir) return;
-
     if (ir->items) {
         free(ir->items);
     }
@@ -34,8 +30,6 @@ void tasm_ir_free(TasmIR* ir) {
 }
 
 void tasm_ir_add(TasmIR* ir, const TasmIRItem* item) {
-    if (!ir || !item) return;
-
     if (ir->count >= ir->capacity) {
         usize new_capacity = (ir->capacity == 0) ? TASM_IR_INITIAL_CAPACITY : ir->capacity * 3;
 
@@ -45,11 +39,12 @@ void tasm_ir_add(TasmIR* ir, const TasmIRItem* item) {
     }
 
     ir->items[ir->count] = *item;
+    ir->items[ir->count].id = ir->count;
     ir->count++;
 }
 
 void tasm_ir_shrink(TasmIR* ir) {
-    if (!ir || ir->capacity == 0) return;
+    if (ir->capacity == 0) return;
 
     if (ir->count == 0) {
         free(ir->items);
