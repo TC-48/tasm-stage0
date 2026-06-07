@@ -14,3 +14,4 @@ typedef struct TasmWidthMapping {
 extern TasmWidthMapping tasm_width_map[];
 extern const usize tasm_width_map_size;
 
+bool tasm_parse_width(StringView m, TasmWidth* out);

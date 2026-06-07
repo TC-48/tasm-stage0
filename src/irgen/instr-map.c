@@ -37,3 +37,13 @@ TasmOpcodeMapping tasm_opcode_map[] = {
 
 const usize tasm_opcode_map_size
     = sizeof(tasm_opcode_map) / sizeof(TasmOpcodeMapping);
+
+bool tasm_parse_mnemonic(StringView m, TasmOpcode* out) {
+    for (usize i = 0; i < tasm_opcode_map_size; ++i) {
+        if (sv_eql_icase(m, tasm_opcode_map[i].mnemonic)) {
+            *out = tasm_opcode_map[i].opcode;
+            return true;
+        }
+    }
+    return false;
+}

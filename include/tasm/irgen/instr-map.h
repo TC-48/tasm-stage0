@@ -11,3 +11,5 @@ typedef struct TasmOpcodeMapping {
 
 extern TasmOpcodeMapping tasm_opcode_map[];
 extern const usize tasm_opcode_map_size;
+
+bool tasm_parse_mnemonic(StringView m, TasmOpcode* out);

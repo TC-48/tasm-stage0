@@ -11,3 +11,13 @@ TasmWidthMapping tasm_width_map[] = {
 };
 
 const usize tasm_width_map_size = 4;
+
+bool tasm_parse_width(StringView m, TasmWidth* out) {
+    for (usize i = 0; i < tasm_width_map_size; ++i) {
+        if (sv_eql_icase(m, tasm_width_map[i].name) || sv_eql(m, tasm_width_map[i].size_str)) {
+            *out = tasm_width_map[i].width;
+            return true;
+        }
+    }
+    return false;
+}

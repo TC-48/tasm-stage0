@@ -31,3 +31,13 @@ TasmPredMapping tasm_pred_map[] = {
 
 const usize tasm_pred_map_size
     = sizeof(tasm_pred_map) / sizeof(TasmPredMapping);
+
+bool tasm_parse_pred(StringView m, TasmPred* out) {
+    for (usize i = 0; i < tasm_pred_map_size; ++i) {
+        if (sv_eql_icase(m, tasm_pred_map[i].name) || sv_eql_icase(m, tasm_pred_map[i].shrt)) {
+            *out = tasm_pred_map[i].pred;
+            return true;
+        }
+    }
+    return false;
+}
