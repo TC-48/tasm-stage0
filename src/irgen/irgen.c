@@ -1,6 +1,7 @@
 #include <tasm/irgen/irgen.h>
 
 #include <tasm/irgen/instr-map.h>
+#include <tasm/irgen/width-map.h>
 #include <tasm/irgen/pred-map.h>
 
 #include <tc48/cpu/regs.h>
@@ -50,6 +51,25 @@ static inline TasmToken expect(TasmIRGen* irgen, TasmTokenType type, const char*
     return tok;
 }
 
+static inline TasmToken expect2(TasmIRGen* irgen, TasmTokenType type1, TasmTokenType type2, const char* msg) {
+    if (check(irgen, type1) || check(irgen, type2)) {
+        return advance(irgen);
+    }
+
+    TasmToken tok = peek(irgen);
+    StringView expected1_sv = tasm_token_type_to_string(type1);
+    StringView expected2_sv = tasm_token_type_to_string(type2);
+    StringView actual_sv = tasm_token_type_to_string(tok.type);
+
+    tasm_report_error(
+        irgen->diag, tok.span, "expected "SV_FMT" or "SV_FMT", got "SV_FMT"%s%s",
+        SV_FARG(expected1_sv), SV_FARG(expected2_sv), SV_FARG(actual_sv),
+        msg != NULL ? ": " : "", msg != NULL ? msg : ""
+    );
+
+    return tok;
+}
+
 void tasm_irgen_init(TasmIRGen* irgen, TasmLexer* lexer, TasmDiagEngine* diag) {
     irgen->lexer = lexer;
     irgen->diag = diag;
@@ -70,6 +90,64 @@ static bool parse_register(TasmToken tok, tc48_reg_id* out) {
     }
 
     return false;
+}
+
+TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
+    TasmPred pred = TC48_PRED_AW;
+    bool had_if = false;
+    if (sv_eql(ident.lexeme, SV("if"))) {
+        had_if = true;
+        expect(irgen, TT_LPAREN, "expected '(' after 'if' token");
+
+        TasmToken pred_tok = expect(irgen, TT_IDENT,  "expected predicate");
+        if (!tasm_parse_pred(pred_tok.lexeme, &pred)) {
+            tasm_report_error(
+                irgen->diag, pred_tok.span,
+                "invalid predicate '"SV_FMT"'", SV_FARG(pred_tok.lexeme)
+            );
+        }
+
+        expect(irgen, TT_RPAREN, "expected ')' after predicate");
+    }
+
+    TasmOpcode opcode;
+    TasmToken opcode_tok =
+        had_if ? expect(irgen, TT_IDENT, "expected instruction mnemonic")
+               : ident;
+
+    if (!tasm_parse_mnemonic(opcode_tok.lexeme, &opcode)) {
+        tasm_report_error(
+            irgen->diag, opcode_tok.span,
+            "invalid predicate '"SV_FMT"'", SV_FARG(opcode_tok.lexeme)
+        );
+    }
+
+    TasmWidth width = TASM_WIDTH_NONE;
+    if (match(irgen, TT_DOT)) {
+        TasmToken width_tok = expect2(irgen, TT_IMM_INT, TT_IDENT, "expected operand width after '.' token");
+        if (!tasm_parse_width(width_tok.lexeme, &width)) {
+            tasm_report_error(
+                irgen->diag, width_tok.span,
+                "invalid operand width '"SV_FMT"'", SV_FARG(width_tok.lexeme)
+            );
+        }
+    }
+
+    TasmWCFR wcfr = TC48_WCFR_NONE;
+    if (match(irgen, TT_QUESTION)) {
+        wcfr = TC48_WCFR_STAT;
+    } else if (match(irgen, TT_EXCLAMATION)) {
+        wcfr = TC48_WCFR_FULL;
+    }
+
+    // TODO: parsing operands
+
+    return (TasmIRItem) {
+        .kind = TASM_IR_INSTR,
+        .as.instr = {
+            .opcode = opcode, .pred = pred, .width = width, .wcfr = wcfr,
+        }
+    };
 }
 
 TasmIRItem tasm_irgen_item(TasmIRGen* irgen) {
@@ -98,6 +176,8 @@ TasmIRItem tasm_irgen_item(TasmIRGen* irgen) {
                 }
             };
         }
+
+        return parse_instruction(irgen, name);
     }
 
     tasm_fail(peek(irgen).span, "unimplemented");
