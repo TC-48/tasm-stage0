@@ -69,17 +69,25 @@ void tasm_irgen_init(TasmIRGen* irgen, TasmLexer* lexer, TasmDiagEngine* diag) {
     irgen->lookahead_count = 0;
 }
 
-// TODO: stub or something
+// TODO: sublanes
 static bool parse_register(TasmToken tok, tc48_reg_id* out) {
     StringView sv = tok.lexeme;
-    if (sv_eql(sv, SV("rip"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_IP); return true; }
-    if (sv_eql(sv, SV("rcf"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_CF); return true; }
-    if (sv_eql(sv, SV("rsp"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_SP); return true; }
-    if (sv_eql(sv, SV("raz"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_AZ); return true; }
+    if (sv_eql_icase(sv, SV("rip"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_IP); return true; }
+    if (sv_eql_icase(sv, SV("rcf"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_CF); return true; }
+    if (sv_eql_icase(sv, SV("rsp"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_SP); return true; }
+    if (sv_eql_icase(sv, SV("raz"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_AZ); return true; }
 
-    if (sv.len > 1 && sv.data[0] == 'r' && isdigit(sv.data[1])) {
-        // TODO: actual parsing logic
-        *out = TC48_WHOLE_REG(TC48_CPU_GPR_BASE); return true;
+    if (sv.len > 1 && (sv.data[0] == 'r' || sv.data[0] == 'R') && isdigit(sv.data[1])) {
+        int num = 0;
+        usize i = 1;
+        while (i < sv.len && isdigit(sv.data[i])) {
+            num = num * 10 + (sv.data[i] - '0');
+            i++;
+        }
+        if (i == sv.len && num >= 0 && num < TC48_CPU_GPR_COUNT) {
+            *out = TC48_WHOLE_REG(TC48_CPU_GPR_BASE + num);
+            return true;
+        }
     }
 
     return false;
