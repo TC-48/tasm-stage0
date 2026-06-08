@@ -3,6 +3,7 @@
 #include <tasm/irgen/instr-map.h>
 #include <tasm/irgen/width-map.h>
 #include <tasm/irgen/pred-map.h>
+#include <tasm/irgen/dir-map.h>
 
 #include <tc48/cpu/regs.h>
 #include <strlib/sv.h>
@@ -219,7 +220,37 @@ TasmIRItem parse_instruction(TasmIRGen* irgen, TasmToken ident) {
     };
 }
 
+static TasmIRItem parse_directive(TasmIRGen* irgen) {
+    TasmToken percent = advance(irgen);
+    TasmToken name = expect(irgen, TT_IDENT, "expected directive name after '%' token");
+
+    TasmDirectiveKind kind = TASM_DIR_WORD;
+    if (!tasm_parse_directive_kind(name.lexeme, &kind)) {
+        tasm_report_error(
+            irgen->diag, name.span,
+            "invalid directive '"SV_FMT"'", SV_FARG(name.lexeme)
+        );
+    }
+
+    TasmOperand value = parse_operand(irgen);
+    TasmSourceSpan span = tasm_srcspan_merge(percent.span, value.span);
+
+    return (TasmIRItem) {
+        .kind = TASM_IR_DIRECTIVE,
+        .span = span,
+        .as.directive = {
+            .kind = kind,
+            .span = span,
+            .value = value,
+        }
+    };
+}
+
 TasmIRItem tasm_irgen_item(TasmIRGen* irgen) {
+    if (check(irgen, TT_PERCENT)) {
+        return parse_directive(irgen);
+    }
+
     if (check(irgen, TT_DOT)) {
         TasmToken dot   = advance(irgen);
         TasmToken name  = expect(irgen, TT_IDENT, "expected label name after '.' token");
