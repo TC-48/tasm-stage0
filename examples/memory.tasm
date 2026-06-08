@@ -1,0 +1,15 @@
+add.48 rip, raz, start
+
+data:
+
+%org 100
+start:
+    add.48 r10, raz, data
+    add.48 r0, raz, 123
+    store.48 r0, r10, 0
+    store.48 r0, r10, 8
+    store.48 r0, r10, 16
+    load.48 r1, r10, 0
+    load.48 r2, r10, 8
+    load.48 r3, r10, 16
+    halt
