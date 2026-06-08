@@ -1,12 +1,12 @@
 start:
     load.24 r0, num
-    add.24 r1, raz, 999
+    set.24 r1, 999
     store.24 r1, num
     load.24 r2, num
-    sub.24 raz, r1, r2
+    cmp.24! r1, r2
     if(eq) halt
 .err:
-    add.48 r10, raz, 576
+    set.48 r10, 576
     halt
 
 num: %half 123

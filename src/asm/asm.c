@@ -56,6 +56,8 @@ static bool validate_and_inspect(
     if (instr->width == TASM_WIDTH_NONE) {
         if (instr->opcode == TASM_OP_NOP || instr->opcode == TASM_OP_HALT) {
             *width = TC48_OPERAND_WIDTH_6;
+        } else if (instr->opcode == TASM_OP_JMP) {
+            *width = TC48_OPERAND_WIDTH_48;
         } else {
             tasm_report_error(as->diag, instr->span, "inferring width is not supported yet");
             return false;
@@ -206,10 +208,64 @@ static bool validate_and_inspect(
 
     case TASM_OP_SET:
     case TASM_OP_CMP:
-    case TASM_OP_JMP:
-        tasm_fail(instr->span, "instruction not implemented");
-        return false;
+    {
+        if (instr->num_operands != 2) {
+            tasm_report_error(as->diag, instr->span, "invalid operand count: expected 2");
+            return false;
+        }
+        if (instr->operands[0].kind != TASM_OPERAND_REG) {
+            tasm_report_error(as->diag, instr->operands[0].span, "expected register");
+            return false;
+        }
+
+        const TasmOperand* op1 = &instr->operands[1];
+        switch (op1->kind) {
+        case TASM_OPERAND_REG:
+            *fmt = TC48_INSTR_FORMAT_RRR;
+            break;
+        case TASM_OPERAND_IMM:
+            *fmt = TC48_INSTR_FORMAT_RRI;
+            break;
+        case TASM_OPERAND_LABEL:
+            if (*width != TC48_OPERAND_WIDTH_48) {
+                tasm_report_error(as->diag, op1->span, "label can be used as imm only in instructions with operand width 48");
+                return false;
+            }
+            *fmt = TC48_INSTR_FORMAT_RRI;
+            break;
+        default:
+            return false;
+        }
+        return true;
     }
+
+    case TASM_OP_JMP:
+    {
+        if (instr->num_operands != 1) {
+            tasm_report_error(as->diag, instr->span, "invalid operand count: expected 1");
+            return false;
+        }
+        if (*width != TC48_OPERAND_WIDTH_48) {
+            tasm_report_error(as->diag, instr->span, "jmp instruction must have operand width 48");
+            return false;
+        }
+
+        const TasmOperand* op0 = &instr->operands[0];
+        switch (op0->kind) {
+        case TASM_OPERAND_REG:
+            *fmt = TC48_INSTR_FORMAT_RRR;
+            break;
+        case TASM_OPERAND_IMM:
+        case TASM_OPERAND_LABEL:
+            *fmt = TC48_INSTR_FORMAT_RRI;
+            break;
+        default:
+            return false;
+        }
+        return true;
+    }
+    }
+    return false;
 }
 
 static tc48_word get_imm_size(enum tc48_operand_width width) {
@@ -301,6 +357,11 @@ static bool lower_instr(TasmAssembler* as, const TasmInstr* instr, tc48_instr* o
     out->wcfr = instr->wcfr;
     out->pred = (tc48_triplet)instr->pred;
 
+    tc48_reg_id r1 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+    tc48_reg_id r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+    tc48_reg_id r3 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+    const TasmOperand* op_imm = NULL;
+
     switch (instr->opcode) {
     case TASM_OP_NOP:  out->opcode = TC48_OP_NOP; return true;
     case TASM_OP_HALT: out->opcode = TC48_OP_HALT; return true;
@@ -327,93 +388,114 @@ static bool lower_instr(TasmAssembler* as, const TasmInstr* instr, tc48_instr* o
 
     case TASM_OP_INC: out->opcode = TC48_OP_ADD; goto op_inc_dec;
     case TASM_OP_DEC: out->opcode = TC48_OP_SUB; goto op_inc_dec;
+
+    case TASM_OP_SET:
+        out->opcode = TC48_OP_ADD;
+        r1 = instr->operands[0].reg;
+        r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+        op_imm = &instr->operands[1];
+        goto op_3_lower;
+
+    case TASM_OP_CMP:
+        out->opcode = TC48_OP_SUB;
+        out->wcfr = TC48_WCFR_FULL;
+        r1 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+        r2 = instr->operands[0].reg;
+        op_imm = &instr->operands[1];
+        goto op_3_lower;
+
+    case TASM_OP_JMP:
+        out->opcode = TC48_OP_ADD;
+        r1 = TC48_WHOLE_REG(TC48_CPU_REG_IP);
+        r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+        op_imm = &instr->operands[0];
+        goto op_3_lower;
     }
 
-op_3: {
-        tc48_reg_id r1 = instr->operands[0].reg;
-        tc48_reg_id r2 = (instr->num_operands == 3) ? instr->operands[1].reg : r1;
-        const TasmOperand* op3 = &instr->operands[instr->num_operands - 1];
+    return false;
 
-        if (fmt == TC48_INSTR_FORMAT_RRR) {
-            out->operands.rrr.r1 = r1;
-            out->operands.rrr.r2 = r2;
-            out->operands.rrr.r3 = op3->reg;
-        } else {
-            out->operands.rri.r1 = r1;
-            out->operands.rri.r2 = r2;
-            tc48_word imm_val;
-            if (!resolve_imm(as, op3, &imm_val)) return false;
-            fill_imm(&out->operands.rri.imm, width, imm_val);
-        }
-        return true;
-    }
+op_3:
+    r1 = instr->operands[0].reg;
+    r2 = (instr->num_operands == 3) ? instr->operands[1].reg : r1;
+    op_imm = &instr->operands[instr->num_operands - 1];
+    goto op_3_lower;
 
-op_2: {
-        tc48_reg_id r1 = instr->operands[0].reg;
-        const TasmOperand* op2 = &instr->operands[instr->num_operands - 1];
-
-        if (fmt == TC48_INSTR_FORMAT_RR) {
-            out->operands.rr.r1 = r1;
-            out->operands.rr.r2 = op2->reg;
-        } else {
-            out->operands.ri.r1 = r1;
-            tc48_word imm_val;
-            if (!resolve_imm(as, op2, &imm_val)) return false;
-            fill_imm(&out->operands.ri.imm, width, imm_val);
-        }
-        return true;
-    }
-
-op_mem: {
-        tc48_reg_id r1 = instr->operands[0].reg;
-        tc48_reg_id r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
-        tc48_reg_id r3 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
-        const TasmOperand* imm_op = NULL;
-
-        if (instr->num_operands == 2) {
-            if (instr->operands[1].kind == TASM_OPERAND_REG) {
-                r2 = instr->operands[1].reg;
-            } else {
-                imm_op = &instr->operands[1];
-            }
-        } else if (instr->num_operands == 3) {
-            if (instr->operands[1].kind == TASM_OPERAND_REG) {
-                r2 = instr->operands[1].reg;
-                if (instr->operands[2].kind == TASM_OPERAND_REG) {
-                    r3 = instr->operands[2].reg;
-                } else {
-                    imm_op = &instr->operands[2];
-                }
-            } else {
-                imm_op = &instr->operands[1];
-                r2 = instr->operands[2].reg;
-            }
-        }
-
-        if (fmt == TC48_INSTR_FORMAT_RRR) {
-            out->operands.rrr.r1 = r1;
-            out->operands.rrr.r2 = r2;
-            out->operands.rrr.r3 = r3;
-        } else {
-            out->operands.rra.r1 = r1;
-            out->operands.rra.r2 = r2;
-            tc48_word imm_val = 0;
-            if (imm_op != NULL) {
-                if (!resolve_imm(as, imm_op, &imm_val)) return false;
-            }
-            out->operands.rra.addr = imm_val;
-        }
-        return true;
-    }
-
-op_inc_dec: {
-        tc48_reg_id r1 = instr->operands[0].reg;
-        tc48_reg_id r2 = (instr->num_operands == 2) ? instr->operands[1].reg : r1;
+op_3_lower:
+    if (fmt == TC48_INSTR_FORMAT_RRR) {
+        out->operands.rrr.r1 = r1;
+        out->operands.rrr.r2 = r2;
+        out->operands.rrr.r3 = op_imm->reg;
+    } else {
         out->operands.rri.r1 = r1;
         out->operands.rri.r2 = r2;
-        fill_imm(&out->operands.rri.imm, width, 1);
-        return true;
+        tc48_word imm_val;
+        if (!resolve_imm(as, op_imm, &imm_val)) return false;
+        fill_imm(&out->operands.rri.imm, width, imm_val);
     }
+    return true;
+
+op_2:
+    r1 = instr->operands[0].reg;
+    op_imm = &instr->operands[instr->num_operands - 1];
+
+    if (fmt == TC48_INSTR_FORMAT_RR) {
+        out->operands.rr.r1 = r1;
+        out->operands.rr.r2 = op_imm->reg;
+    } else {
+        out->operands.ri.r1 = r1;
+        tc48_word imm_val;
+        if (!resolve_imm(as, op_imm, &imm_val)) return false;
+        fill_imm(&out->operands.ri.imm, width, imm_val);
+    }
+    return true;
+
+op_mem:
+    r1 = instr->operands[0].reg;
+    r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+    r3 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+
+    if (instr->num_operands == 2) {
+        if (instr->operands[1].kind == TASM_OPERAND_REG) {
+            r2 = instr->operands[1].reg;
+        } else {
+            op_imm = &instr->operands[1];
+        }
+    } else if (instr->num_operands == 3) {
+        if (instr->operands[1].kind == TASM_OPERAND_REG) {
+            r2 = instr->operands[1].reg;
+            if (instr->operands[2].kind == TASM_OPERAND_REG) {
+                r3 = instr->operands[2].reg;
+            } else {
+                op_imm = &instr->operands[2];
+            }
+        } else {
+            op_imm = &instr->operands[1];
+            r2 = instr->operands[2].reg;
+        }
+    }
+
+    if (fmt == TC48_INSTR_FORMAT_RRR) {
+        out->operands.rrr.r1 = r1;
+        out->operands.rrr.r2 = r2;
+        out->operands.rrr.r3 = r3;
+    } else {
+        out->operands.rra.r1 = r1;
+        out->operands.rra.r2 = r2;
+        tc48_word imm_val = 0;
+        if (op_imm != NULL) {
+            if (!resolve_imm(as, op_imm, &imm_val)) return false;
+        }
+        out->operands.rra.addr = imm_val;
+    }
+    return true;
+
+op_inc_dec:
+    r1 = instr->operands[0].reg;
+    r2 = (instr->num_operands == 2) ? instr->operands[1].reg : r1;
+    out->operands.rri.r1 = r1;
+    out->operands.rri.r2 = r2;
+    fill_imm(&out->operands.rri.imm, width, 1);
+    return true;
 }
 
 static bool lower_directive(TasmAssembler* as, const TasmDirective* dir, tc48_word* out) {

@@ -1,8 +1,8 @@
-start: // global_labels["start"] = 0
-    set r1, 100
+start:
+    set.24 r1, 100
     jmp .loop
-.loop: // local_labels["loop"] = 3
-    dec r1
-    cmp! r1, 0
+.loop:
+    dec.24 r1
+    cmp.24! r1, 0
     if(eq) halt
     jmp .loop

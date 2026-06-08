@@ -1,2 +1,2 @@
-add.6 r0, raz, 123
+set.6 r0, 123
 halt

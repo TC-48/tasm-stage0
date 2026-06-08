@@ -1,4 +1,4 @@
-add.48 rip, raz, start
+jmp start
 
 data:
 
