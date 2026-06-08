@@ -17,6 +17,7 @@ typedef enum TasmTokenType {
     TT_NEWLINE, /// \n
     TT_EXCLAMATION, /// !
     TT_QUESTION,    /// ?
+    TT_PERCENT,     /// %
 
     TT_IMM_INT,  /// 123
     TT_IMM_CHAR, /// 'x'

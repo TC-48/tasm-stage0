@@ -132,6 +132,7 @@ TasmLexerResult tasm_lexer_next(TasmLexer* lexer, TasmToken* out_tok) {
         case '\n': next(lexer); return ret_tok(lexer, out_tok, TT_NEWLINE);
         case '!':  next(lexer); return ret_tok(lexer, out_tok, TT_EXCLAMATION);
         case '?':  next(lexer); return ret_tok(lexer, out_tok, TT_QUESTION);
+        case '%':  next(lexer); return ret_tok(lexer, out_tok, TT_PERCENT);
 
         case '\'': return lex_char_lit(lexer, out_tok);
         case '"':  return lex_string_lit(lexer, out_tok);
