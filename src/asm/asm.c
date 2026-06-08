@@ -7,7 +7,6 @@ void tasm_asm_init(TasmAssembler* as, const TasmIR* ir, TasmDiagEngine* diag) {
     as->item_addresses = calloc(ir->count, sizeof(tc48_word));
     as->symbols = malloc(ir->count * sizeof(TasmSymbol));
     as->symbol_count = 0;
-    as->current_addr = 0;
     as->current_scope_id = (usize)-1;
 }
 
@@ -19,14 +18,14 @@ void tasm_asm_free(TasmAssembler* as) {
 }
 
 static void
-    pass1(TasmAssembler*),
+    pass1(TasmAssembler*, tc48_word*),
     pass2(TasmAssembler*, TasmLIR*);
 
 TasmLIR tasm_assemble(TasmAssembler* as) {
     TasmLIR lir;
     tasm_lir_init(&lir);
 
-    pass1(as);
+    pass1(as, &lir.size);
     pass2(as, &lir);
 
     return lir;
@@ -361,7 +360,7 @@ static bool lower_directive(TasmAssembler* as, const TasmDirective* dir, tc48_wo
     return false;
 }
 
-static void pass1(TasmAssembler* as) {
+static void pass1(TasmAssembler* as, tc48_word* out_size) {
     tc48_word current_addr = 0;
     as->current_scope_id = (usize)-1;
 
@@ -389,6 +388,8 @@ static void pass1(TasmAssembler* as) {
             current_addr += get_instr_size(as, &item->as.instr);
         }
     }
+
+    *out_size = current_addr;
 }
 
 static void pass2(TasmAssembler* as, TasmLIR* lir) {

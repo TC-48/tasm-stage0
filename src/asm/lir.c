@@ -15,28 +15,19 @@ static bool tasm_lir_resize(TasmLIR* lir, usize new_capacity) {
 }
 
 void tasm_lir_init(TasmLIR* lir) {
-    if (!lir) return;
-
     lir->items = NULL;
+    lir->size = 0;
     lir->count = 0;
     lir->capacity = 0;
 }
 
 void tasm_lir_free(TasmLIR* lir) {
-    if (!lir) return;
-
-    if (lir->items) {
+    if (lir->items != NULL) {
         free(lir->items);
     }
-
-    lir->items = NULL;
-    lir->count = 0;
-    lir->capacity = 0;
 }
 
 void tasm_lir_add(TasmLIR* lir, const TasmLIRItem* item) {
-    if (!lir || !item) return;
-
     if (lir->count >= lir->capacity) {
         usize new_capacity = (lir->capacity == 0) ? TASM_LIR_INITIAL_CAPACITY : lir->capacity * 3;
 
@@ -50,7 +41,7 @@ void tasm_lir_add(TasmLIR* lir, const TasmLIRItem* item) {
 }
 
 void tasm_lir_shrink(TasmLIR* lir) {
-    if (!lir || lir->capacity == 0) return;
+    if (lir->capacity == 0) return;
 
     if (lir->count == 0) {
         free(lir->items);

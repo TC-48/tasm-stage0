@@ -23,6 +23,7 @@ typedef struct TasmLIRItem {
 
 typedef struct TasmLIR {
     TasmLIRItem* items;
+    tc48_word size;
     usize count;
     usize capacity;
 } TasmLIR;
