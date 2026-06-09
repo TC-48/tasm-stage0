@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tasm/ir/instr.h>
+#include <tasm/asr/instr.h>
 #include <tasm/defs/ints.h>
 #include <tasm/srcdoc/srcspan.h>
 
@@ -9,33 +9,33 @@
 
 #include <strlib/sv.h>
 
-typedef enum TasmDirectiveKind {
+typedef enum TasmAsrDirKind {
     TASM_DIR_WORD,
     TASM_DIR_HALF,
     TASM_DIR_QUARTER,
     TASM_DIR_TRYTE,
     TASM_DIR_ORG,
-} TasmDirectiveKind;
+} TasmAsrDirKind;
 
-typedef struct TasmDirective {
-    TasmDirectiveKind kind;
+typedef struct TasmAsrDir {
+    TasmAsrDirKind kind;
     TasmSourceSpan    span;
     TasmOperand       value;
-} TasmDirective;
+} TasmAsrDir;
 
-typedef enum TasmIRItemKind {
+typedef enum TasmAsrItemKind {
     TASM_IR_LABEL,
     TASM_IR_INSTR,
     TASM_IR_DIRECTIVE,
-} TasmIRItemKind;
+} TasmAsrItemKind;
 
-typedef struct TasmIRItem {
+typedef struct TasmAsrItem {
     usize id;
-    TasmIRItemKind kind;
+    TasmAsrItemKind kind;
     TasmSourceSpan span;
     union {
         TasmLabel     label;
         TasmInstr     instr;
-        TasmDirective directive;
+        TasmAsrDir directive;
     } as;
-} TasmIRItem;
+} TasmAsrItem;

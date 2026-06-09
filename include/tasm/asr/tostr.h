@@ -1,4 +1,4 @@
-#include <tasm/ir/ir.h>
+#include <tasm/asr/buf.h>
 
 StringView tasm_opcode_to_str(TasmOpcode op);
 StringView tasm_pred_to_str(TasmPred pred);

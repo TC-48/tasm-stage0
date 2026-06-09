@@ -4,31 +4,31 @@
 #include <tc48/cpu/instr.h>
 #include <tc48/word.h>
 
-typedef enum TasmLIRItemKind {
+typedef enum TasmIRItemKind {
     TASM_LIR_INSTR,
     TASM_LIR_DATA_TRYTE,
     TASM_LIR_DATA_QUARTER,
     TASM_LIR_DATA_HALF,
     TASM_LIR_DATA_WORD,
-} TasmLIRItemKind;
+} TasmIRItemKind;
 
-typedef struct TasmLIRItem {
+typedef struct TasmIRItem {
     tc48_word       address;
-    TasmLIRItemKind kind;
+    TasmIRItemKind kind;
     union {
         tc48_instr instr;
         tc48_word  data;
     } as;
-} TasmLIRItem;
+} TasmIRItem;
 
-typedef struct TasmLIR {
-    TasmLIRItem* items;
+typedef struct TasmIR {
+    TasmIRItem* items;
     tc48_word size;
     usize count;
     usize capacity;
-} TasmLIR;
+} TasmIR;
 
-void tasm_lir_init(TasmLIR* lir);
-void tasm_lir_free(TasmLIR* lir);
-void tasm_lir_add(TasmLIR* lir, const TasmLIRItem* item);
-void tasm_lir_shrink(TasmLIR* lir);
+void tasm_ir_init(TasmIR* ir);
+void tasm_ir_free(TasmIR* ir);
+void tasm_ir_add(TasmIR* ir, const TasmIRItem* item);
+void tasm_ir_shrink(TasmIR* ir);

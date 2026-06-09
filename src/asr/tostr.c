@@ -1,5 +1,5 @@
-#include <tasm/ir/tostr.h>
-#include <tasm/ir/ir.h>
+#include <tasm/asr/tostr.h>
+#include <tasm/asr/buf.h>
 
 StringView tasm_opcode_to_str(TasmOpcode op) {
     switch (op) {

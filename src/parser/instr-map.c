@@ -1,4 +1,4 @@
-#include <tasm/irgen/instr-map.h>
+#include <tasm/parser/instr-map.h>
 
 #define MAP(M, O) \
     (TasmOpcodeMapping) { .mnemonic = SV(M), .opcode = O }

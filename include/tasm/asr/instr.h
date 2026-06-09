@@ -4,7 +4,7 @@
 #include <tc48/cpu/opcode.h>
 #include <tc48/cpu/instr.h>
 
-#include <tasm/ir/label.h>
+#include <tasm/asr/label.h>
 #include <strlib/sv.h>
 
 typedef enum TasmWidth {

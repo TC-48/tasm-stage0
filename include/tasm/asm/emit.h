@@ -1,5 +1,5 @@
 #pragma once
 
-#include <tasm/asm/lir.h>
+#include <tasm/asm/ir.h>
 
-void tasm_emit(const TasmLIR* lir, const char* path);
+void tasm_emit(const TasmIR* ir, const char* path);

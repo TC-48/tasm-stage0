@@ -1,9 +1,10 @@
+#include "tasm/asr/buf.h"
 #include <tasm/srcdoc/srcdoc.h>
 #include <tasm/lexer/lexer.h>
-#include <tasm/irgen/irgen.h>
+#include <tasm/parser/parser.h>
 #include <tasm/asm/asm.h>
 #include <tasm/asm/emit.h>
-#include <tasm/ir/dump.h>
+#include <tasm/asr/dump.h>
 #include <stdio.h>
 
 int main(int argc, const char* argv[]) {
@@ -23,25 +24,27 @@ int main(int argc, const char* argv[]) {
 
     TasmDiagEngine diag = {0};
 
-    TasmIRGen irgen;
-    tasm_irgen_init(&irgen, &lexer, &diag);
+    TasmParser parser;
+    tasm_parser_init(&parser, &lexer, &diag);
 
-    TasmIR ir = tasm_irgen(&irgen);
+    TasmAsrBuf asr;
+    tasm_asr_init(&asr);
+    tasm_parse(&parser, &asr);
 
     TasmAssembler as;
-    tasm_asm_init(&as, &ir, &diag);
+    tasm_asm_init(&as, &asr, &diag);
 
-    TasmLIR lir = tasm_assemble(&as);
+    TasmIR ir = tasm_assemble(&as);
 
     if (diag.error_count == 0) {
-        tasm_emit(&lir, output_path);
+        tasm_emit(&ir, output_path);
     } else {
         fprintf(stderr, "assembly failed with %d errors\n", (int)diag.error_count);
     }
 
-    tasm_lir_free(&lir);
-    tasm_asm_free(&as);
     tasm_ir_free(&ir);
+    tasm_asm_free(&as);
+    tasm_asr_free(&asr);
     tasm_srcdoc_free(&source);
 
     return diag.error_count == 0 ? 0 : 1;

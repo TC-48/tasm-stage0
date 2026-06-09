@@ -5,11 +5,11 @@
 
 #include <stdlib.h>
 
-void tasm_asm_init(TasmAssembler* as, const TasmIR* ir, TasmDiagEngine* diag) {
-    as->ir = ir;
+void tasm_asm_init(TasmAssembler* as, const TasmAsrBuf* asr, TasmDiagEngine* diag) {
+    as->asr = asr;
     as->diag = diag;
-    as->item_addresses = calloc(ir->count, sizeof(tc48_word));
-    as->symbols = malloc(ir->count * sizeof(TasmSymbol));
+    as->item_addresses = calloc(asr->count, sizeof(tc48_word));
+    as->symbols = malloc(asr->count * sizeof(TasmSymbol));
     as->symbol_count = 0;
     as->current_scope_id = (usize)-1;
 }
@@ -23,16 +23,16 @@ void tasm_asm_free(TasmAssembler* as) {
 
 static void
     pass1(TasmAssembler*, tc48_word*),
-    pass2(TasmAssembler*, TasmLIR*);
+    pass2(TasmAssembler*, TasmIR*);
 
-TasmLIR tasm_assemble(TasmAssembler* as) {
-    TasmLIR lir;
-    tasm_lir_init(&lir);
+TasmIR tasm_assemble(TasmAssembler* as) {
+    TasmIR ir;
+    tasm_ir_init(&ir);
 
-    pass1(as, &lir.size);
-    pass2(as, &lir);
+    pass1(as, &ir.size);
+    pass2(as, &ir);
 
-    return lir;
+    return ir;
 }
 
 static TasmSymbol* find_symbol(TasmAssembler* as, StringView name, bool is_local, usize scope) {
@@ -310,7 +310,7 @@ static tc48_word get_instr_size(TasmAssembler* as, const TasmInstr* instr) {
     return size;
 }
 
-static tc48_word get_directive_size(TasmDirectiveKind kind) {
+static tc48_word get_directive_size(TasmAsrDirKind kind) {
     switch (kind) {
     case TASM_DIR_WORD:    return 8;
     case TASM_DIR_HALF:    return 4;
@@ -498,7 +498,7 @@ op_inc_dec:
     return true;
 }
 
-static bool lower_directive(TasmAssembler* as, const TasmDirective* dir, tc48_word* out) {
+static bool lower_directive(TasmAssembler* as, const TasmAsrDir* dir, tc48_word* out) {
     // already handled in pass1()
     if (dir->kind == TASM_DIR_ORG) return false;
 
@@ -521,8 +521,8 @@ static void pass1(TasmAssembler* as, tc48_word* out_size) {
     tc48_word current_addr = 0;
     as->current_scope_id = (usize)-1;
 
-    for (usize i = 0; i < as->ir->count; i++) {
-        TasmIRItem* item = &as->ir->items[i];
+    for (usize i = 0; i < as->asr->count; i++) {
+        TasmAsrItem* item = &as->asr->items[i];
         as->item_addresses[item->id] = current_addr;
 
         if (item->kind == TASM_IR_LABEL) {
@@ -549,11 +549,11 @@ static void pass1(TasmAssembler* as, tc48_word* out_size) {
     *out_size = current_addr;
 }
 
-static void pass2(TasmAssembler* as, TasmLIR* lir) {
+static void pass2(TasmAssembler* as, TasmIR* ir) {
     as->current_scope_id = (usize)-1;
 
-    for (usize i = 0; i < as->ir->count; i++) {
-        TasmIRItem* item = &as->ir->items[i];
+    for (usize i = 0; i < as->asr->count; i++) {
+        TasmAsrItem* item = &as->asr->items[i];
         tc48_word addr = as->item_addresses[item->id];
 
         if (item->kind == TASM_IR_LABEL && !item->as.label.is_local) {
@@ -562,23 +562,23 @@ static void pass2(TasmAssembler* as, TasmLIR* lir) {
         }
 
         if (item->kind == TASM_IR_INSTR) {
-            TasmLIRItem lir_item = { .address = addr, .kind = TASM_LIR_INSTR };
-            if (lower_instr(as, &item->as.instr, &lir_item.as.instr)) {
-                tasm_lir_add(lir, &lir_item);
+            TasmIRItem ir_item = { .address = addr, .kind = TASM_LIR_INSTR };
+            if (lower_instr(as, &item->as.instr, &ir_item.as.instr)) {
+                tasm_ir_add(ir, &ir_item);
             }
         } else if (item->kind == TASM_IR_DIRECTIVE && item->as.directive.kind != TASM_DIR_ORG) {
-            TasmLIRItem lir_item = { .address = addr };
+            TasmIRItem ir_item = { .address = addr };
 
             switch (item->as.directive.kind) {
-                case TASM_DIR_TRYTE:   lir_item.kind = TASM_LIR_DATA_TRYTE;   break;
-                case TASM_DIR_QUARTER: lir_item.kind = TASM_LIR_DATA_QUARTER; break;
-                case TASM_DIR_HALF:    lir_item.kind = TASM_LIR_DATA_HALF;    break;
-                case TASM_DIR_WORD:    lir_item.kind = TASM_LIR_DATA_WORD;    break;
+                case TASM_DIR_TRYTE:   ir_item.kind = TASM_LIR_DATA_TRYTE;   break;
+                case TASM_DIR_QUARTER: ir_item.kind = TASM_LIR_DATA_QUARTER; break;
+                case TASM_DIR_HALF:    ir_item.kind = TASM_LIR_DATA_HALF;    break;
+                case TASM_DIR_WORD:    ir_item.kind = TASM_LIR_DATA_WORD;    break;
                 default: break;
             }
 
-            if (lower_directive(as, &item->as.directive, &lir_item.as.data)) {
-                tasm_lir_add(lir, &lir_item);
+            if (lower_directive(as, &item->as.directive, &ir_item.as.data)) {
+                tasm_ir_add(ir, &ir_item);
             }
         }
 

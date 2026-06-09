@@ -1,7 +1,7 @@
 #pragma once
 
 #include <tasm/defs/ints.h>
-#include <tasm/ir/instr.h>
+#include <tasm/asr/instr.h>
 #include <strlib/sv.h>
 
 typedef struct TasmPredMapping {

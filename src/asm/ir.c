@@ -1,8 +1,9 @@
-#include <tasm/ir/ir.h>
+#include <tasm/asm/ir.h>
 
+#include <stdbool.h>
 #include <stdlib.h>
 
-#define TASM_IR_INITIAL_CAPACITY 8
+#define TASM_LIR_INITIAL_CAPACITY 8
 
 static bool tasm_ir_resize(TasmIR* ir, usize new_capacity) {
     TasmIRItem* new_items = realloc(ir->items, new_capacity * sizeof(TasmIRItem));
@@ -15,23 +16,20 @@ static bool tasm_ir_resize(TasmIR* ir, usize new_capacity) {
 
 void tasm_ir_init(TasmIR* ir) {
     ir->items = NULL;
+    ir->size = 0;
     ir->count = 0;
     ir->capacity = 0;
 }
 
 void tasm_ir_free(TasmIR* ir) {
-    if (ir->items) {
+    if (ir->items != NULL) {
         free(ir->items);
     }
-
-    ir->items = NULL;
-    ir->count = 0;
-    ir->capacity = 0;
 }
 
 void tasm_ir_add(TasmIR* ir, const TasmIRItem* item) {
     if (ir->count >= ir->capacity) {
-        usize new_capacity = (ir->capacity == 0) ? TASM_IR_INITIAL_CAPACITY : ir->capacity * 3;
+        usize new_capacity = (ir->capacity == 0) ? TASM_LIR_INITIAL_CAPACITY : ir->capacity * 3;
 
         if (!tasm_ir_resize(ir, new_capacity)) {
             return; // TODO: error handling
@@ -39,7 +37,6 @@ void tasm_ir_add(TasmIR* ir, const TasmIRItem* item) {
     }
 
     ir->items[ir->count] = *item;
-    ir->items[ir->count].id = ir->count;
     ir->count++;
 }
 

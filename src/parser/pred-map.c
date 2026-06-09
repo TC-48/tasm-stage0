@@ -1,4 +1,4 @@
-#include <tasm/irgen/pred-map.h>
+#include <tasm/parser/pred-map.h>
 
 #define MAP(N, S, P) \
     (TasmPredMapping) { .name = SV(N), .shrt = SV(S), .pred = P }

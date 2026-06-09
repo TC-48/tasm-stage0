@@ -1,9 +1,9 @@
-#include <tasm/irgen/dir-map.h>
+#include <tasm/parser/dir-map.h>
 
 #define MAP(M, K) \
-    (TasmDirectiveMapping) { .mnemonic = SV(M), .kind = K }
+    (TasmAsrDirMapping) { .mnemonic = SV(M), .kind = K }
 
-TasmDirectiveMapping tasm_directive_map[] = {
+TasmAsrDirMapping tasm_directive_map[] = {
     MAP("word",    TASM_DIR_WORD),
     MAP("half",    TASM_DIR_HALF),
     MAP("quarter", TASM_DIR_QUARTER),
@@ -12,9 +12,9 @@ TasmDirectiveMapping tasm_directive_map[] = {
 };
 
 const usize tasm_directive_map_size
-    = sizeof(tasm_directive_map) / sizeof(TasmDirectiveMapping);
+    = sizeof(tasm_directive_map) / sizeof(TasmAsrDirMapping);
 
-bool tasm_parse_directive_kind(StringView m, TasmDirectiveKind* out) {
+bool tasm_parse_directive_kind(StringView m, TasmAsrDirKind* out) {
     for (usize i = 0; i < tasm_directive_map_size; ++i) {
         if (sv_eql_icase(m, tasm_directive_map[i].mnemonic)) {
             *out = tasm_directive_map[i].kind;

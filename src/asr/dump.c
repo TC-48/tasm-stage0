@@ -1,8 +1,8 @@
-#include <tasm/ir/dump.h>
-#include <tasm/ir/tostr.h>
-#include <tasm/ir/defs.h>
-#include <tasm/ir/instr.h>
-#include <tasm/ir/label.h>
+#include <tasm/asr/dump.h>
+#include <tasm/asr/tostr.h>
+#include <tasm/asr/defs.h>
+#include <tasm/asr/instr.h>
+#include <tasm/asr/label.h>
 
 #include <tasm/util/assert.h>
 #include <strlib/sv.h>
@@ -67,7 +67,7 @@ void tasm_dump_instr(const TasmInstr* instr, FILE* out) {
     }
 }
 
-void tasm_dump_directive(const TasmDirective* dir, FILE* out) {
+void tasm_dump_directive(const TasmAsrDir* dir, FILE* out) {
     const char* kind_str = "unknown";
     switch (dir->kind) {
         case TASM_DIR_WORD:    kind_str = "word";    break;
@@ -81,11 +81,11 @@ void tasm_dump_directive(const TasmDirective* dir, FILE* out) {
     fprintf(out, "\n");
 }
 
-void tasm_dump_ir(const TasmIR* ir, FILE* out) {
-    TASM_ASSERT(ir != NULL && out != NULL, "tasm_dump_ir called with NULL argument");
+void tasm_asr_dump(const TasmAsrBuf* asr, FILE* out) {
+    TASM_ASSERT(asr != NULL && out != NULL, "tasm_asr_dump called with NULL argument");
 
-    for (usize i = 0; i < ir->count; ++i) {
-        const TasmIRItem* item = &ir->items[i];
+    for (usize i = 0; i < asr->count; ++i) {
+        const TasmAsrItem* item = &asr->items[i];
         switch (item->kind) {
         case TASM_IR_LABEL:
             fprintf(
@@ -102,6 +102,6 @@ void tasm_dump_ir(const TasmIR* ir, FILE* out) {
             continue;
         }
 
-        TASM_UNREACHABLE_ENUM_VAL(TasmIRItemKind, item->kind);
+        TASM_UNREACHABLE_ENUM_VAL(TasmAsrItemKind, item->kind);
     }
 }

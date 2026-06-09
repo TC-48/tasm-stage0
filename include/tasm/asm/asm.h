@@ -1,8 +1,8 @@
 #pragma once
 
 #include <tasm/util/diag.h>
-#include <tasm/asm/lir.h>
-#include <tasm/ir/ir.h>
+#include <tasm/asm/ir.h>
+#include <tasm/asr/buf.h>
 
 typedef struct TasmSymbol {
     StringView name;
@@ -12,8 +12,8 @@ typedef struct TasmSymbol {
 } TasmSymbol;
 
 typedef struct TasmAssembler {
-    const TasmIR*   ir;
-    TasmDiagEngine* diag;
+    const TasmAsrBuf* asr;
+    TasmDiagEngine*  diag;
 
     usize current_scope_id;
 
@@ -22,7 +22,7 @@ typedef struct TasmAssembler {
     usize           symbol_count;
 } TasmAssembler;
 
-void tasm_asm_init(TasmAssembler* as, const TasmIR* ir, TasmDiagEngine* diag);
+void tasm_asm_init(TasmAssembler* as, const TasmAsrBuf* asr, TasmDiagEngine* diag);
 void tasm_asm_free(TasmAssembler* as);
 
-TasmLIR tasm_assemble(TasmAssembler* as);
+TasmIR tasm_assemble(TasmAssembler* as);

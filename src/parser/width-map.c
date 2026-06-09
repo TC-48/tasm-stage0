@@ -1,4 +1,4 @@
-#include <tasm/irgen/width-map.h>
+#include <tasm/parser/width-map.h>
 
 #define MAP(S, N, P) \
     (TasmWidthMapping) { .name = SV(N), .size = S, .size_str = SV(#S), .width = P }
