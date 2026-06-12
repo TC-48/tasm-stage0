@@ -53,17 +53,63 @@ static bool validate_and_inspect(
     TasmAssembler* as, const TasmInstr* instr,
     enum tc48_instr_format* fmt, enum tc48_operand_width* width
 ) {
+    TasmWidth inferred_width = TASM_WIDTH_NONE;
+
+    bool is_addr_op = (instr->opcode == TASM_OP_LOAD || instr->opcode == TASM_OP_STORE ||
+                      instr->opcode == TASM_OP_IN || instr->opcode == TASM_OP_OUT);
+
+    for (usize i = 0; i < instr->num_operands; i++) {
+        if (instr->operands[i].kind == TASM_OPERAND_REG) {
+            if (is_addr_op && i > 0) {
+                if (instr->operands[i].reg.width != TASM_WIDTH_48) {
+                    tasm_report_error(as->diag, instr->operands[i].span,
+                        "memory address register must be 48-bit (e.g., r0, r0:w)");
+                    return false;
+                }
+                continue;
+            }
+
+            if (instr->operands[i].reg.id.base == TC48_CPU_REG_AZ) continue;
+
+            TasmWidth op_width = instr->operands[i].reg.width;
+            if (inferred_width == TASM_WIDTH_NONE) {
+                inferred_width = op_width;
+            } else if (inferred_width != op_width) {
+                tasm_report_error(as->diag, instr->span, "conflicting operand widths");
+                return false;
+            }
+        }
+    }
+
     if (instr->width == TASM_WIDTH_NONE) {
         if (instr->opcode == TASM_OP_NOP || instr->opcode == TASM_OP_HALT) {
             *width = TC48_OPERAND_WIDTH_6;
         } else if (instr->opcode == TASM_OP_JMP) {
             *width = TC48_OPERAND_WIDTH_48;
+        } else if (inferred_width != TASM_WIDTH_NONE) {
+            *width = (enum tc48_operand_width)inferred_width;
         } else {
-            tasm_report_error(as->diag, instr->span, "inferring width is not supported yet");
-            return false;
+            // If only RAZ registers were found, use their width (usually 48).
+            for (usize i = 0; i < instr->num_operands; i++) {
+                if (instr->operands[i].kind == TASM_OPERAND_REG &&
+                    instr->operands[i].reg.id.base == TC48_CPU_REG_AZ) {
+                    inferred_width = instr->operands[i].reg.width;
+                    break;
+                }
+            }
+            if (inferred_width != TASM_WIDTH_NONE) {
+                *width = (enum tc48_operand_width)inferred_width;
+            } else {
+                tasm_report_error(as->diag, instr->span, "cannot infer instruction width");
+                return false;
+            }
         }
     } else {
         *width = (enum tc48_operand_width)instr->width;
+        if (inferred_width != TASM_WIDTH_NONE && inferred_width != instr->width) {
+            tasm_report_error(as->diag, instr->span, "operand width does not match instruction width");
+            return false;
+        }
     }
 
     switch (instr->opcode) {
@@ -78,11 +124,10 @@ static bool validate_and_inspect(
             return false;
         }
 
-        const TasmOperand* op0 = &instr->operands[0];
         const TasmOperand* op1 = (instr->num_operands == 2) ? &instr->operands[0] : &instr->operands[1];
         const TasmOperand* op2 = (instr->num_operands == 2) ? &instr->operands[1] : &instr->operands[2];
 
-        if (op0->kind != TASM_OPERAND_REG || op1->kind != TASM_OPERAND_REG) {
+        if (instr->operands[0].kind != TASM_OPERAND_REG || op1->kind != TASM_OPERAND_REG) {
             tasm_report_error(as->diag, instr->span, "incorrect operand kind: expected register");
             return false;
         }
@@ -114,10 +159,9 @@ static bool validate_and_inspect(
             return false;
         }
 
-        const TasmOperand* op0 = &instr->operands[0];
         const TasmOperand* op1 = (instr->num_operands == 1) ? &instr->operands[0] : &instr->operands[1];
 
-        if (op0->kind != TASM_OPERAND_REG) {
+        if (instr->operands[0].kind != TASM_OPERAND_REG) {
             tasm_report_error(as->diag, instr->span, "incorrect operand kind: expected register");
             return false;
         }

@@ -1,8 +1,8 @@
 start:
-    set.24 r1, 100
+    set r1:h0, 100
     jmp .loop
 .loop:
-    dec.24 r1
-    cmp.24! r1, 0
+    dec r1:h0
+    cmp! r1:h0, 0
     if(eq) halt
     jmp .loop

@@ -1,9 +1,9 @@
 start:
-    load.24 r0, num
-    set.24 r1, 999
-    store.24 r1, num
-    load.24 r2, num
-    cmp.24! r1, r2
+    load r0:h0, num
+    set r1:h0, 999
+    store r1:h0, num
+    load r2:h0, num
+    cmp! r1:h0, r2:h0
     if(eq) halt
 .err:
     set.48 r10, 576

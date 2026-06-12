@@ -1,11 +1,11 @@
 start:
     // 2846 = stub device class id
-    set.48 r10, 2846
+    set r10, 2846
     jmp find-dev
 
 found:
     // r11 = stub device base addr
-    out.48 raz, r11
+    out raz, r11
     halt
 
 // args: device class id in r10
@@ -13,29 +13,29 @@ found:
 // we REALLY need to standarize some calling convention.
 find-dev:
     // in port 0 = DEVICE_COUNT (bus controller)
-    in.48 r15, raz
+    in r15, raz
 
     // r12 = the loop index
-    set.48 r12, 0
+    set r12, 0
 
 .loop:
-    cmp.48! r12, r15
+    cmp! r12, r15
     if(ge) jmp found
 
     // out port 0 = SELECT_DEVICE (bus controller)
-    out.48 r12, 0
+    out r12, 0
 
     // in port 2 = SELECTED_TYPE (bus controller)
-    in.48 r13, 2
+    in r13, 2
 
-    cmp.48! r13, r10
+    cmp! r13, r10
     if(ne) jmp .miss
 
     // in port 3 = SELECTED_BASE (bus controller)
-    in.48 r11, 3
+    in r11, 3
     jmp found
 
 .miss:
-    inc.48 r12
+    inc r12
     jmp .loop
 

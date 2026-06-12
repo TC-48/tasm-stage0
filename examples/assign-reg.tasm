@@ -1,2 +1,2 @@
-set.6 r0, 123
+set r0:t0, 123
 halt
