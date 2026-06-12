@@ -72,14 +72,16 @@ void tasm_parser_init(TasmParser* parser, TasmLexer* lexer, TasmDiagEngine* diag
 }
 
 // TODO: sublanes
-static bool parse_register(TasmToken tok, tc48_reg_id* out) {
+static bool parse_register(TasmParser* parser, TasmToken tok, TasmRegister* out, TasmSourceSpan* out_span) {
+    tc48_reg_id reg_id;
     StringView sv = tok.lexeme;
-    if (sv_eql_icase(sv, SV("rip"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_IP); return true; }
-    if (sv_eql_icase(sv, SV("rcf"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_CF); return true; }
-    if (sv_eql_icase(sv, SV("rsp"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_SP); return true; }
-    if (sv_eql_icase(sv, SV("raz"))) { *out = TC48_WHOLE_REG(TC48_CPU_REG_AZ); return true; }
 
-    if (sv.len > 1 && (sv.data[0] == 'r' || sv.data[0] == 'R') && isdigit(sv.data[1])) {
+    bool found_base = true;
+    if      (sv_eql_icase(sv, SV("rip"))) { reg_id = TC48_WHOLE_REG(TC48_CPU_REG_IP); }
+    else if (sv_eql_icase(sv, SV("rcf"))) { reg_id = TC48_WHOLE_REG(TC48_CPU_REG_CF); }
+    else if (sv_eql_icase(sv, SV("rsp"))) { reg_id = TC48_WHOLE_REG(TC48_CPU_REG_SP); }
+    else if (sv_eql_icase(sv, SV("raz"))) { reg_id = TC48_WHOLE_REG(TC48_CPU_REG_AZ); }
+    else if (sv.len > 1 && (sv.data[0] == 'r' || sv.data[0] == 'R') && isdigit(sv.data[1])) {
         int num = 0;
         usize i = 1;
         while (i < sv.len && isdigit(sv.data[i])) {
@@ -87,12 +89,70 @@ static bool parse_register(TasmToken tok, tc48_reg_id* out) {
             i++;
         }
         if (i == sv.len && num >= 0 && num < TC48_CPU_GPR_COUNT) {
-            *out = TC48_WHOLE_REG(TC48_CPU_GPR_BASE + num);
-            return true;
+            reg_id = TC48_WHOLE_REG(TC48_CPU_GPR_BASE + num);
+        } else {
+            found_base = false;
+        }
+    } else {
+        found_base = false;
+    }
+
+    if (!found_base) return false;
+
+    out->id = reg_id;
+    out->width = TASM_WIDTH_48;
+    *out_span = tok.span;
+
+    if (match(parser, TT_COLON)) {
+        TasmToken suffix_tok = expect(parser, TT_IDENT, "expected register width suffix");
+        *out_span = tasm_srcspan_merge(*out_span, suffix_tok.span);
+        StringView ssv = suffix_tok.lexeme;
+        if (ssv.len == 0) return true;
+
+        char width_char = tolower(ssv.data[0]);
+        int lane = -1;
+        if (ssv.len > 1 && isdigit(ssv.data[1])) {
+            lane = ssv.data[1] - '0';
+        }
+
+        switch (width_char) {
+        case 'w':
+            out->width = TASM_WIDTH_48;
+            if (ssv.len > 1) {
+                tasm_report_error(parser->diag, suffix_tok.span, "width 'w' does not support lane index");
+            }
+            break;
+        case 'h':
+            out->width = TASM_WIDTH_24;
+            if (ssv.len != 2 || lane < 0 || lane > 1) {
+                tasm_report_error(parser->diag, suffix_tok.span, "width 'h' requires a lane index 0-1");
+            } else {
+                out->id.lane = (tc48_doublet)lane;
+            }
+            break;
+        case 'q':
+            out->width = TASM_WIDTH_12;
+            if (ssv.len != 2 || lane < 0 || lane > 3) {
+                tasm_report_error(parser->diag, suffix_tok.span, "width 'q' requires a lane index 0-3");
+            } else {
+                out->id.lane = (tc48_doublet)lane;
+            }
+            break;
+        case 't':
+            out->width = TASM_WIDTH_6;
+            if (ssv.len != 2 || lane < 0 || lane > 7) {
+                tasm_report_error(parser->diag, suffix_tok.span, "width 't' requires a lane index 0-7");
+            } else {
+                out->id.lane = (tc48_doublet)lane;
+            }
+            break;
+        default:
+            tasm_report_error(parser->diag, suffix_tok.span, "invalid register width suffix '"SV_FMT"'", SV_FARG(ssv));
+            break;
         }
     }
 
-    return false;
+    return true;
 }
 
 static TasmOperand parse_operand(TasmParser* parser) {
@@ -120,11 +180,12 @@ static TasmOperand parse_operand(TasmParser* parser) {
     }
 
     if (tok.type == TT_IDENT) {
-        tc48_reg_id reg;
-        if (parse_register(tok, &reg)) {
+        TasmRegister reg;
+        TasmSourceSpan reg_span = tok.span;
+        if (parse_register(parser, tok, &reg, &reg_span)) {
             return (TasmOperand) {
                 .kind = TASM_OPERAND_REG,
-                .span = tok.span,
+                .span = reg_span,
                 .reg = reg
             };
         }

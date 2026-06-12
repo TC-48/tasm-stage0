@@ -21,13 +21,18 @@ typedef enum TasmOperandKind {
     TASM_OPERAND_LABEL,
 } TasmOperandKind;
 
+typedef struct TasmRegister {
+    TasmWidth width;
+    tc48_reg_id id;
+} TasmRegister;
+
 typedef struct TasmOperand {
     TasmOperandKind kind;
     TasmSourceSpan  span;
     union {
-        tc48_reg_id reg;
-        tc48_i128b  imm;
-        TasmLabel   label;
+        TasmRegister reg;
+        tc48_i128b   imm;
+        TasmLabel    label;
     };
 } TasmOperand;
 

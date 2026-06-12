@@ -32,22 +32,20 @@ static void print_i128(FILE* out, tc48_i128b val) {
 
 static void tasm_dump_operand(const TasmOperand* op, FILE* out) {
     switch (op->kind) {
-        case TASM_OPERAND_REG: {
-            fprintf(out, "REG(base: %d, lane: %d)", (int)op->reg.base, (int)op->reg.lane);
-            break;
-        }
-        case TASM_OPERAND_IMM: {
-            fprintf(out, "IMM(");
-            print_i128(out, op->imm);
-            fprintf(out, ")");
-            break;
-        }
-        case TASM_OPERAND_LABEL: {
-            fprintf(out, "LABEL_REF(name: " SV_FMT ", is_local: %s)",
-                    SV_FARG(op->label.name),
-                    op->label.is_local ? "true" : "false");
-            break;
-        }
+    case TASM_OPERAND_REG:
+        fprintf(out, "REG(base: %u, lane: %u, width: %u)",
+                (unsigned)op->reg.id.base, (unsigned)op->reg.id.lane, (unsigned)op->reg.width);
+        break;
+    case TASM_OPERAND_IMM:
+        fprintf(out, "IMM(");
+        print_i128(out, op->imm);
+        fprintf(out, ")");
+        break;
+    case TASM_OPERAND_LABEL:
+        fprintf(out, "LABEL_REF(name: " SV_FMT ", is_local: %s)",
+                SV_FARG(op->label.name),
+                op->label.is_local ? "true" : "false");
+        break;
     }
 }
 

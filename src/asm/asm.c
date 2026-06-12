@@ -391,7 +391,7 @@ static bool lower_instr(TasmAssembler* as, const TasmInstr* instr, tc48_instr* o
 
     case TASM_OP_SET:
         out->opcode = TC48_OP_ADD;
-        r1 = instr->operands[0].reg;
+        r1 = instr->operands[0].reg.id;
         r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
         op_imm = &instr->operands[1];
         goto op_3_lower;
@@ -400,7 +400,7 @@ static bool lower_instr(TasmAssembler* as, const TasmInstr* instr, tc48_instr* o
         out->opcode = TC48_OP_SUB;
         out->wcfr = TC48_WCFR_FULL;
         r1 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
-        r2 = instr->operands[0].reg;
+        r2 = instr->operands[0].reg.id;
         op_imm = &instr->operands[1];
         goto op_3_lower;
 
@@ -415,8 +415,8 @@ static bool lower_instr(TasmAssembler* as, const TasmInstr* instr, tc48_instr* o
     return false;
 
 op_3:
-    r1 = instr->operands[0].reg;
-    r2 = (instr->num_operands == 3) ? instr->operands[1].reg : r1;
+    r1 = instr->operands[0].reg.id;
+    r2 = (instr->num_operands == 3) ? instr->operands[1].reg.id : r1;
     op_imm = &instr->operands[instr->num_operands - 1];
     goto op_3_lower;
 
@@ -424,7 +424,7 @@ op_3_lower:
     if (fmt == TC48_INSTR_FORMAT_RRR) {
         out->operands.rrr.r1 = r1;
         out->operands.rrr.r2 = r2;
-        out->operands.rrr.r3 = op_imm->reg;
+        out->operands.rrr.r3 = op_imm->reg.id;
     } else {
         out->operands.rri.r1 = r1;
         out->operands.rri.r2 = r2;
@@ -435,12 +435,12 @@ op_3_lower:
     return true;
 
 op_2:
-    r1 = instr->operands[0].reg;
+    r1 = instr->operands[0].reg.id;
     op_imm = &instr->operands[instr->num_operands - 1];
 
     if (fmt == TC48_INSTR_FORMAT_RR) {
         out->operands.rr.r1 = r1;
-        out->operands.rr.r2 = op_imm->reg;
+        out->operands.rr.r2 = op_imm->reg.id;
     } else {
         out->operands.ri.r1 = r1;
         tc48_word imm_val;
@@ -450,27 +450,27 @@ op_2:
     return true;
 
 op_mem:
-    r1 = instr->operands[0].reg;
+    r1 = instr->operands[0].reg.id;
     r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
     r3 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
 
     if (instr->num_operands == 2) {
         if (instr->operands[1].kind == TASM_OPERAND_REG) {
-            r2 = instr->operands[1].reg;
+            r2 = instr->operands[1].reg.id;
         } else {
             op_imm = &instr->operands[1];
         }
     } else if (instr->num_operands == 3) {
         if (instr->operands[1].kind == TASM_OPERAND_REG) {
-            r2 = instr->operands[1].reg;
+            r2 = instr->operands[1].reg.id;
             if (instr->operands[2].kind == TASM_OPERAND_REG) {
-                r3 = instr->operands[2].reg;
+                r3 = instr->operands[2].reg.id;
             } else {
                 op_imm = &instr->operands[2];
             }
         } else {
             op_imm = &instr->operands[1];
-            r2 = instr->operands[2].reg;
+            r2 = instr->operands[2].reg.id;
         }
     }
 
@@ -490,8 +490,8 @@ op_mem:
     return true;
 
 op_inc_dec:
-    r1 = instr->operands[0].reg;
-    r2 = (instr->num_operands == 2) ? instr->operands[1].reg : r1;
+    r1 = instr->operands[0].reg.id;
+    r2 = (instr->num_operands == 2) ? instr->operands[1].reg.id : r1;
     out->operands.rri.r1 = r1;
     out->operands.rri.r2 = r2;
     fill_imm(&out->operands.rri.imm, width, 1);
