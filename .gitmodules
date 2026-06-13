@@ -4,3 +4,6 @@
 [submodule "deps/strlib"]
 	path = deps/strlib
 	url = https://github.com/Maqi-x/strlib
+[submodule "deps/tscs-spec"]
+	path = deps/tscs-spec
+	url = https://github.com/TC-48/tscs-specification
