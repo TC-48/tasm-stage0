@@ -1,5 +1,7 @@
 #include <tasm/parser/parser.h>
 
+#include <tasm/parser/literals.h>
+
 #include <tasm/parser/instr-map.h>
 #include <tasm/parser/width-map.h>
 #include <tasm/parser/pred-map.h>
@@ -169,8 +171,8 @@ static TasmOperand parse_operand(TasmParser* parser) {
     TasmToken tok = advance(parser);
     if (tok.type == TT_IMM_INT) {
         tc48_i128b imm = 0;
-        for (size_t i = 0; i < tok.lexeme.len; ++i) {
-            imm = imm * 10 + (tok.lexeme.data[i] - '0');
+        if (!tasm_parse_lit_int(tok.lexeme, &imm)) {
+            tasm_report_error(parser->diag, tok.span, "invalid integer literal '"SV_FMT"'", SV_FARG(tok.lexeme));
         }
         return (TasmOperand) {
             .kind = TASM_OPERAND_IMM,

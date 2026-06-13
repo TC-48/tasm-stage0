@@ -139,8 +139,30 @@ TasmLexerResult tasm_lexer_next(TasmLexer* lexer, TasmToken* out_tok) {
 
         default:
             if (isdigit(c)) {
-                while (!is_at_end(lexer) && isdigit(peek(lexer))) {
-                    next(lexer);
+                if (c == '0' && !is_at_end(lexer)) {
+                    char n = peek_next(lexer);
+                    if (n == 't' || n == 'n' || n == 's') {
+                        next(lexer); // 0
+                        next(lexer); // t, n, s
+                        while (!is_at_end(lexer)) {
+                            char nc = peek(lexer);
+                            if (isalnum(nc) || nc == '_' || nc == '\'') {
+                                next(lexer);
+                            } else {
+                                break;
+                            }
+                        }
+                        return ret_tok_with_lexeme(lexer, out_tok, TT_IMM_INT);
+                    }
+                }
+
+                while (!is_at_end(lexer)) {
+                    char nc = peek(lexer);
+                    if (isdigit(nc) || nc == '_' || nc == '\'') {
+                        next(lexer);
+                    } else {
+                        break;
+                    }
                 }
                 return ret_tok_with_lexeme(lexer, out_tok, TT_IMM_INT);
             }

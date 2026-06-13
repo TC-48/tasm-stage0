@@ -1,0 +1,15 @@
+set r0, 1'000'000
+cmp! r0, 1_000_000
+if(ne) jmp err
+cmp! r0, 1000000
+if(ne) jmp err
+
+set r1, 0t_102100_012112
+cmp! r1, 0n370175
+if(ne) jmp err
+
+halt
+
+err:
+    set r10, 999
+    halt
