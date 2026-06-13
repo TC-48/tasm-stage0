@@ -1,4 +1,5 @@
 CC ?= cc
+PY ?= python3
 BUILD ?= release
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
@@ -43,6 +44,11 @@ EMU_GEN_HEADERS := include/tc48/gen/word-lits.h \
                    include/tc48/gen/version.h
 EMU_LIB_STATIC  := $(EMU_DIR)/out/$(BUILD)/lib/libtc48emu.a
 
+TSCS_SCRIPT     := $(DEPS_DIR)/tscs-spec/scripts/gen-c-table.py
+TSCS_SPEC_JSON  := $(DEPS_DIR)/tscs-spec/spec.json
+TSCS_GEN_HEADER := $(INCLUDE_DIR)/tasm/gen/tscs.h
+TSCS_GEN_SOURCE := $(SRC_DIR)/gen/tscs.c
+
 COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR) -I$(EMU_DIR)/include -I$(DEPS_DIR)/strlib/src
 
 ifeq ($(BUILD),debug)
@@ -64,8 +70,7 @@ else
 endif
 
 ALL_C_SRCS := $(call rwildcard,$(SRC_DIR),*.c)
-
-ALL_C_SRCS := $(sort $(ALL_C_SRCS))
+ALL_C_SRCS := $(sort $(ALL_C_SRCS) $(TSCS_GEN_SOURCE))
 
 MAIN_C_SRC := $(SRC_DIR)/main.c
 LIB_C_SRCS := $(filter $(SRC_DIR)/%, $(filter-out $(MAIN_C_SRC), $(ALL_C_SRCS)))
@@ -88,6 +93,9 @@ all: $(TARGET) $(LIB_STATIC) $(LIB_SHARED)
 
 $(EMU_GEN_HEADERS):
 	$(MAKE) -C $(EMU_DIR) FEATURES=none $@
+
+$(TSCS_GEN_HEADER) $(TSCS_GEN_SOURCE) &: $(TSCS_SCRIPT)
+	$(PY) $(TSCS_SCRIPT) $(TSCS_SPEC_JSON) --inc-path="<tasm/gen/tscs.h>" --out-c=$(TSCS_GEN_SOURCE) --out-h=$(TSCS_GEN_HEADER)
 
 $(EMU_LIB_STATIC): $(EMU_GEN_HEADERS)
 	$(MAKE) -C $(EMU_DIR) libtc48emu FEATURES=none BUILD=$(BUILD)

@@ -1,0 +1,24 @@
+// based on https://tc-48.github.io/tscs-specification/character-codes.html
+start:
+    set r0:t0, 'X'
+    cmp! r0:t0, 0t010012
+    if(ne) jmp err
+
+    set r0:t0, 'Ξ'
+    cmp! r0:t0, 0t101211
+    if(ne) jmp err
+
+    jmp .cont
+
+.char:
+    %tryte '\n'
+
+.cont:
+    load r1:t0, .char
+    cmp! r1:t0, 0t000011
+
+out raz, 0sQQQQQQQQQ
+err:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ
+

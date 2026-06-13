@@ -3,8 +3,8 @@ build/
 out/
 
 # Generated files
-src/tc48/gen/*
-include/tc48/gen/*
+src/gen/*
+include/tasm/gen/*
 
 # IDEs configuration
 compile_flags.txt

@@ -181,6 +181,16 @@ static TasmOperand parse_operand(TasmParser* parser) {
         };
     }
 
+    if (tok.type == TT_IMM_CHAR) {
+        tc48_i128b imm = 0;
+        tasm_parse_lit_char(parser->diag, tok, &imm);
+        return (TasmOperand) {
+            .kind = TASM_OPERAND_IMM,
+            .span = tok.span,
+            .imm = imm,
+        };
+    }
+
     if (tok.type == TT_IDENT) {
         TasmRegister reg;
         TasmSourceSpan reg_span = tok.span;

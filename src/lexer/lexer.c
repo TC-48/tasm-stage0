@@ -62,13 +62,13 @@ static inline bool isident(char c) {
 static TasmLexerResult lex_char_lit(TasmLexer* lexer, TasmToken* out_tok) {
     next(lexer); // '
 
-    if (is_at_end(lexer)) return TASM_LEXRES_UNTERM_LITERAL;
-    
-    if (peek(lexer) == '\\') {
+    while (!is_at_end(lexer) && peek(lexer) != '\'') {
+        if (peek(lexer) == '\\') {
+            next(lexer);
+            if (is_at_end(lexer)) return TASM_LEXRES_UNTERM_LITERAL;
+        }
         next(lexer);
-        if (is_at_end(lexer)) return TASM_LEXRES_UNTERM_LITERAL;
     }
-    next(lexer);
 
     if (is_at_end(lexer) || peek(lexer) != '\'') return TASM_LEXRES_UNTERM_LITERAL;
     next(lexer); // '
