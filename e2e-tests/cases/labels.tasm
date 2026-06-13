@@ -1,0 +1,22 @@
+set r1, 1
+
+g1:
+    cmp r1, 1
+    if(eq) jmp g2
+
+    cmp r1, 2
+    if(eq) jmp .l1
+
+    jmp done
+.l1:
+    nop
+.l2:
+    set r1, 3
+    jmp g1
+
+g2:
+    set r1, 2
+    jmp g1
+
+done:
+    out raz, 0sQQQQQQQQQ

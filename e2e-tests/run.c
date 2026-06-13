@@ -50,6 +50,7 @@ void print_error(const char* fmt, ...) {
 #define RET_PASS 0
 #define RET_FAIL 1
 #define RET_ERR  2
+#define RET_TIME 3
 
 int compile(const char* tasm_path, const char* input_path, const char* temp_path) {
     pid_t pid = fork();
@@ -87,7 +88,7 @@ static tc48_word test_dev_in(tc48_device* self, tc48_word offset, tc48_width wid
     return (void) self, (void) offset, (void) width, 0;
 }
 static void test_dev_out(tc48_device* self, tc48_word offset, tc48_width width, tc48_word value) {
-    (void) offset, (void) width;
+    (void)self, (void) offset, (void) width;
     tret = value;
     finish = true;
 }
@@ -104,6 +105,7 @@ tc48_device_class test_dev_class = {
 // QQQQQQQQQ in septemvigesimal (i love this name)
 #define TEST_DEV_ADDR 7625597484986
 
+#define MAX_STEPS 1000000
 int run(const char* temp_path, const char* test_name) {
     tc48_system sys;
     tc48_system_init(&sys, MEM_SIZE);
@@ -113,9 +115,17 @@ int run(const char* temp_path, const char* test_name) {
 
     tret = TRET_UNSET;
     finish = false;
+
+    tc48_word steps = 0;
     while (!finish) {
         tc48_system_step(&sys);
+        if (++steps >= MAX_STEPS) {
+            print_error("test '%s' exceeded the maximum execution steps", test_name);
+            tc48_system_deinit(&sys);
+            return RET_TIME;
+        }
     }
+
     tc48_system_deinit(&sys);
 
     if (tret == TRET_UNSET) {

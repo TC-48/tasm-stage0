@@ -1,0 +1,15 @@
+load r0:h0, num
+set r1:h0, 999
+store r1:h0, num
+load r2:h0, num
+
+cmp! r1:h0, r2:h0
+if(eq) out raz, 0sQQQQQQQQQ
+
+jmp err
+
+num: %half 123
+
+err:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ

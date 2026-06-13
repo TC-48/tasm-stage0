@@ -35,7 +35,7 @@ endif
 TARGET := $(BIN_DIR)/tasm$(EXE_EXT)
 
 CSTD       := -std=c11
-WARNINGS   := -Wall -Wextra -Werror=implicit-fallthrough
+WARNINGS   := -Wall -Wextra -Werror=implicit-fallthrough -Wno-old-style-declaration
 PIC_CFLAGS := -fPIC
 
 EMU_DIR := $(DEPS_DIR)/tc48-emu
@@ -87,10 +87,10 @@ endif
 all: $(TARGET) $(LIB_STATIC) $(LIB_SHARED)
 
 $(EMU_GEN_HEADERS):
-	$(MAKE) -C $(EMU_DIR) $@
+	$(MAKE) -C $(EMU_DIR) FEATURES=none $@
 
 $(EMU_LIB_STATIC): $(EMU_GEN_HEADERS)
-	$(MAKE) -C $(EMU_DIR) libtc48emu BUILD=$(BUILD)
+	$(MAKE) -C $(EMU_DIR) libtc48emu FEATURES=none BUILD=$(BUILD)
 
 $(LIB_STATIC): $(LIB_OBJ_STATIC)
 	@$(call CMD_MKDIR_P,$(dir $@))

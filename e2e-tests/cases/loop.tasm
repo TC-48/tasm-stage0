@@ -1,0 +1,11 @@
+start:
+    set r1:h0, 100
+    jmp .loop
+.loop:
+    dec r1:h0
+    cmp! r1:h0, 0
+    if(eq) jmp .done
+    jmp .loop
+.done:
+    out raz, 0sQQQQQQQQQ
+
