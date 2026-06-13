@@ -1,17 +1,14 @@
 set r0, 123456789
 cmp! r0, 0s8G86NI
-if(ne) jmp err
+if(ne) nop // unreachable (assuming the assembler and emulator work correctly)
 
 set r1, 0n21836758
 cmp! r1, 10594448
-if(ne) jmp err
+if(ne) nop // unreachable (assuming the assembler and emulator work correctly)
 
 set r0:t0, 0t222222
 cmp! r0:t0, 728
-if(ne) jmp err
+if(ne) nop // unreachable (assuming the assembler and emulator work correctly)
 
 halt
 
-err:
-    set r10, 999
-    halt

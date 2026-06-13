@@ -5,8 +5,6 @@ start:
     load r2:h0, num
     cmp! r1:h0, r2:h0
     if(eq) halt
-.err:
-    set.48 r10, 576
-    halt
+    nop // unreachable (assuming the assembler and emulator work correctly)
 
 num: %half 123

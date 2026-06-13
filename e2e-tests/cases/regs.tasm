@@ -1,0 +1,21 @@
+set r0:t0, 123
+cmp! r0:t0, 123
+if(ne) jmp err
+
+set r1:q2, 9192
+cmp! r1:q2, 9192
+if(ne) jmp err
+
+set r2:w, 0n8237482874
+cmp! r2, 0n8237482874
+if(ne) jmp err
+
+set r0:h0, 123
+set r0:h1, 321
+cmp! r0, 34738832987484
+if(ne) jmp err
+
+out raz, 0sQQQQQQQQQ
+err:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ

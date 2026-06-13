@@ -117,8 +117,9 @@ $(OBJ_ROOT_DIR)/shared/%.o: %.c $(EMU_GEN_HEADERS)
 sharedlib: $(LIB_SHARED)
 
 -include $(DEPS)
+include e2e-tests/run.mk
 
-clean:
+clean: e2e-clean
 	@$(call CMD_RM_RF,build)
 	@$(call CMD_RM_RF,out)
 
