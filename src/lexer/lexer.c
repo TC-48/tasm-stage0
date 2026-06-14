@@ -90,7 +90,13 @@ static TasmLexerResult lex_string_lit(TasmLexer* lexer, TasmToken* out_tok) {
     if (is_at_end(lexer)) return TASM_LEXRES_UNTERM_LITERAL;
     next(lexer); // "
 
-    return ret_tok_with_lexeme(lexer, out_tok, TT_IMM_STR);
+    StringView lexeme = sv_slice(get_source(lexer), lexer->start_loc.offset + 1, lexer->current_loc.offset - 1);
+    *out_tok = (TasmToken) {
+        .type   = TT_IMM_STR,
+        .lexeme = lexeme,
+        .span   = tasm_srcspan_make(lexer->doc, lexer->start_loc, lexer->current_loc)
+    };
+    return TASM_LEXRES_OK;
 }
 
 void tasm_lexer_init(TasmLexer* lexer, const TasmSourceDocument* doc) {

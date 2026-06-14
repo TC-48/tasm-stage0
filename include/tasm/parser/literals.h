@@ -14,3 +14,4 @@ TasmEscapeResult tasm_parse_escape(TasmDiagEngine* diag, TasmSourceSpan span, co
 
 bool tasm_parse_lit_int(StringView lexeme, tc48_i128b* out);
 bool tasm_parse_lit_char(TasmDiagEngine* diag, TasmToken tok, tc48_i128b* out);
+bool tasm_parse_lit_string_chars(TasmDiagEngine* diag, TasmSourceSpan span, StringView sv, int32_t* out_chars, usize* out_count);

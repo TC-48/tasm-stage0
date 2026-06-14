@@ -19,6 +19,7 @@ typedef enum TasmOperandKind {
     TASM_OPERAND_REG,
     TASM_OPERAND_IMM,
     TASM_OPERAND_LABEL,
+    TASM_OPERAND_STR,
 } TasmOperandKind;
 
 typedef struct TasmRegister {
@@ -33,6 +34,7 @@ typedef struct TasmOperand {
         TasmRegister reg;
         tc48_i128b   imm;
         TasmLabel    label;
+        StringView   str;
     };
 } TasmOperand;
 

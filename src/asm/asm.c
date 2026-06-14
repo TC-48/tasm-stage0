@@ -4,6 +4,7 @@
 #include <tc48/cpu/instr.h>
 
 #include <stdlib.h>
+#include <tasm/parser/literals.h>
 
 void tasm_asm_init(TasmAssembler* as, const TasmAsrBuf* asr, TasmDiagEngine* diag) {
     as->asr = asr;
@@ -354,13 +355,20 @@ static tc48_word get_instr_size(TasmAssembler* as, const TasmInstr* instr) {
     return size;
 }
 
-static tc48_word get_directive_size(TasmAsrDirKind kind) {
-    switch (kind) {
+static tc48_word get_directive_size(TasmAssembler* as, const TasmAsrDir* dir) {
+    switch (dir->kind) {
     case TASM_DIR_WORD:    return 8;
     case TASM_DIR_HALF:    return 4;
     case TASM_DIR_QUARTER: return 2;
     case TASM_DIR_TRYTE:   return 1;
     case TASM_DIR_ORG:     return 0;
+    case TASM_DIR_STRING: {
+        usize count = 0;
+        if (tasm_parse_lit_string_chars(as->diag, dir->value.span, dir->value.str, NULL, &count)) {
+            return (tc48_word)count;
+        }
+        return 0;
+    }
     }
     return 0;
 }
@@ -583,7 +591,7 @@ static void pass1(TasmAssembler* as, tc48_word* out_size) {
             if (item->as.directive.kind == TASM_DIR_ORG) {
                 current_addr = item->as.directive.value.imm;
             } else {
-                current_addr += get_directive_size(item->as.directive.kind);
+                current_addr += get_directive_size(as, &item->as.directive);
             }
         } else if (item->kind == TASM_IR_INSTR) {
             current_addr += get_instr_size(as, &item->as.instr);
@@ -611,18 +619,35 @@ static void pass2(TasmAssembler* as, TasmIR* ir) {
                 tasm_ir_add(ir, &ir_item);
             }
         } else if (item->kind == TASM_IR_DIRECTIVE && item->as.directive.kind != TASM_DIR_ORG) {
-            TasmIRItem ir_item = { .address = addr };
+            if (item->as.directive.kind == TASM_DIR_STRING) {
+                usize count = 0;
+                tasm_parse_lit_string_chars(as->diag, item->as.directive.value.span, item->as.directive.value.str, NULL, &count);
+                int32_t* chars = malloc(count * sizeof(int32_t));
+                if (tasm_parse_lit_string_chars(as->diag, item->as.directive.value.span, item->as.directive.value.str, chars, &count)) {
+                    for (usize c = 0; c < count; c++) {
+                        TasmIRItem ir_item = {
+                            .address = addr + c,
+                            .kind = TASM_LIR_DATA_TRYTE,
+                            .as.data = (tc48_word)chars[c]
+                        };
+                        tasm_ir_add(ir, &ir_item);
+                    }
+                }
+                free(chars);
+            } else {
+                TasmIRItem ir_item = { .address = addr };
 
-            switch (item->as.directive.kind) {
-                case TASM_DIR_TRYTE:   ir_item.kind = TASM_LIR_DATA_TRYTE;   break;
-                case TASM_DIR_QUARTER: ir_item.kind = TASM_LIR_DATA_QUARTER; break;
-                case TASM_DIR_HALF:    ir_item.kind = TASM_LIR_DATA_HALF;    break;
-                case TASM_DIR_WORD:    ir_item.kind = TASM_LIR_DATA_WORD;    break;
-                default: break;
-            }
+                switch (item->as.directive.kind) {
+                    case TASM_DIR_TRYTE:   ir_item.kind = TASM_LIR_DATA_TRYTE;   break;
+                    case TASM_DIR_QUARTER: ir_item.kind = TASM_LIR_DATA_QUARTER; break;
+                    case TASM_DIR_HALF:    ir_item.kind = TASM_LIR_DATA_HALF;    break;
+                    case TASM_DIR_WORD:    ir_item.kind = TASM_LIR_DATA_WORD;    break;
+                    default: break;
+                }
 
-            if (lower_directive(as, &item->as.directive, &ir_item.as.data)) {
-                tasm_ir_add(ir, &ir_item);
+                if (lower_directive(as, &item->as.directive, &ir_item.as.data)) {
+                    tasm_ir_add(ir, &ir_item);
+                }
             }
         }
 

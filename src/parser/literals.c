@@ -198,3 +198,36 @@ bool tasm_parse_lit_char(TasmDiagEngine* diag, TasmToken tok, tc48_i128b* out) {
     *out = (tc48_i128b)tscs_index;
     return true;
 }
+
+bool tasm_parse_lit_string_chars(TasmDiagEngine* diag, TasmSourceSpan span, StringView sv, int32_t* out_chars, usize* out_count) {
+    usize count = 0;
+    usize i = 0;
+    while (i < sv.len) {
+        int32_t tscs_index = -1;
+        if (sv.data[i] == '\\') {
+            TasmEscapeResult res = tasm_parse_escape(diag, span, &sv.data[i], sv.len - i);
+            if (!res.success) return false;
+            tscs_index = res.tscs_index;
+            i += res.consumed;
+        } else {
+            usize bytes = 0;
+            uint32_t codepoint = decode_utf8(&sv.data[i], sv.len - i, &bytes);
+            if (codepoint == 0xFFFD) {
+                tasm_report_error(diag, span, "invalid UTF-8 sequence");
+                return false;
+            }
+            tscs_index = tscs_find_unicode(codepoint);
+            if (tscs_index == -1) {
+                tasm_report_error(diag, span, "character has no TSCS mapping");
+                return false;
+            }
+            i += bytes;
+        }
+        if (out_chars) {
+            out_chars[count] = tscs_index;
+        }
+        count++;
+    }
+    *out_count = count;
+    return true;
+}

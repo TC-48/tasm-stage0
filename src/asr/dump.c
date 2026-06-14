@@ -46,6 +46,9 @@ static void tasm_dump_operand(const TasmOperand* op, FILE* out) {
                 SV_FARG(op->label.name),
                 op->label.is_local ? "true" : "false");
         break;
+    case TASM_OPERAND_STR:
+        fprintf(out, "STR(" SV_FMT ")", SV_FARG(op->str));
+        break;
     }
 }
 
@@ -73,6 +76,7 @@ void tasm_dump_directive(const TasmAsrDir* dir, FILE* out) {
         case TASM_DIR_QUARTER: kind_str = "quarter"; break;
         case TASM_DIR_TRYTE:   kind_str = "tryte";   break;
         case TASM_DIR_ORG:     kind_str = "org";     break;
+        case TASM_DIR_STRING:  kind_str = "string";  break;
     }
     fprintf(out, "DIRECTIVE: kind=%s, value=", kind_str);
     tasm_dump_operand(&dir->value, out);

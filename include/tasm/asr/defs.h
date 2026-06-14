@@ -15,6 +15,7 @@ typedef enum TasmAsrDirKind {
     TASM_DIR_QUARTER,
     TASM_DIR_TRYTE,
     TASM_DIR_ORG,
+    TASM_DIR_STRING,
 } TasmAsrDirKind;
 
 typedef struct TasmAsrDir {

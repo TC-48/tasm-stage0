@@ -1,0 +1,41 @@
+start:
+    set r2, .str
+    load r1:t0, r2, 0
+    cmp! r1:t0, 'X'
+    if(ne) jmp err
+    load r1:t0, r2, 1
+    cmp! r1:t0, '±'
+    if(ne) jmp err
+
+    set r2, .str_bs
+    load r1:t0, r2, 0
+    cmp! r1:t0, '\\'
+    if(ne) jmp err
+    load r1:t0, r2, 1
+    cmp! r1:t0, '\c{111102}' // 111102 = '\\'
+    if(ne) jmp err
+
+    set r2, .str_esc
+    load r1:t0, r2, 0
+    cmp! r1:t0, 'X'
+    if(ne) jmp err
+    load r1:t0, r2, 1
+    cmp! r1:t0, '\n'
+    if(ne) jmp err
+    load r1:t0, r2, 2
+    cmp! r1:t0, 'Y'
+    if(ne) jmp err
+
+    out raz, 0sQQQQQQQQQ
+
+.str:
+    %string "X±"
+.str_bs:
+    %string "\\\\"
+.str_esc:
+    %string "X\nY"
+
+err:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ
+

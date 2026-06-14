@@ -169,6 +169,14 @@ static TasmOperand parse_operand(TasmParser* parser) {
     }
 
     TasmToken tok = advance(parser);
+    if (tok.type == TT_IMM_STR) {
+        return (TasmOperand) {
+            .kind = TASM_OPERAND_STR,
+            .span = tok.span,
+            .str = tok.lexeme,
+        };
+    }
+
     if (tok.type == TT_IMM_INT) {
         tc48_i128b imm = 0;
         if (!tasm_parse_lit_int(tok.lexeme, &imm)) {
