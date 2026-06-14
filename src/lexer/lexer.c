@@ -56,7 +56,7 @@ static inline TasmLexerResult ret_tok_with_lexeme(TasmLexer* lexer, TasmToken* o
 }
 
 static inline bool isident(char c) {
-    return c == '_' || c == '-' || c == '$';
+    return c == '_' || c == '$';
 }
 
 static TasmLexerResult lex_char_lit(TasmLexer* lexer, TasmToken* out_tok) {

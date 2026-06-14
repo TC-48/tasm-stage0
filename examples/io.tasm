@@ -1,7 +1,7 @@
 start:
     // 2846 = stub device class id
     set r10, 2846
-    jmp find-dev
+    jmp find_dev
 
 found:
     // r11 = stub device base addr
@@ -11,7 +11,7 @@ found:
 // args: device class id in r10
 // output: base port in r11
 // we REALLY need to standarize some calling convention.
-find-dev:
+find_dev:
     // in port 0 = DEVICE_COUNT (bus controller)
     in r15, raz
 
