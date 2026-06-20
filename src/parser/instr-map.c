@@ -1,7 +1,7 @@
 #include <tasm/parser/instr-map.h>
 
 #define MAP(M, O) \
-    (TasmOpcodeMapping) { .mnemonic = SV(M), .opcode = O }
+    { .mnemonic = SV(M), .opcode = O }
 
 TasmOpcodeMapping tasm_opcode_map[] = {
     MAP("nop", TASM_OP_NOP),

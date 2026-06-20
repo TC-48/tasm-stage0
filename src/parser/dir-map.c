@@ -1,7 +1,7 @@
 #include <tasm/parser/dir-map.h>
 
 #define MAP(M, K) \
-    (TasmAsrDirMapping) { .mnemonic = SV(M), .kind = K }
+    { .mnemonic = SV(M), .kind = K }
 
 TasmAsrDirMapping tasm_directive_map[] = {
     MAP("word",    TASM_DIR_WORD),

@@ -1,7 +1,7 @@
 #include <tasm/parser/width-map.h>
 
 #define MAP(S, N, P) \
-    (TasmWidthMapping) { .name = SV(N), .size = S, .size_str = SV(#S), .width = P }
+    { .name = SV(N), .size = S, .size_str = SV(#S), .width = P }
 
 TasmWidthMapping tasm_width_map[] = {
     MAP(6,  "tryte",   TASM_WIDTH_6),

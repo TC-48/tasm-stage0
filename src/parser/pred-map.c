@@ -1,7 +1,7 @@
 #include <tasm/parser/pred-map.h>
 
 #define MAP(N, S, P) \
-    (TasmPredMapping) { .name = SV(N), .shrt = SV(S), .pred = P }
+    { .name = SV(N), .shrt = SV(S), .pred = P }
 
 TasmPredMapping tasm_pred_map[] = {
     MAP("always", "aw", TC48_PRED_AW),
