@@ -95,6 +95,8 @@ $(EMU_GEN_HEADERS):
 	$(MAKE) -C $(EMU_DIR) FEATURES=none $@
 
 $(TSCS_GEN_HEADER) $(TSCS_GEN_SOURCE) &: $(TSCS_SCRIPT)
+	@$(call CMD_MKDIR_P,$(dir $(TSCS_GEN_HEADER)))
+	@$(call CMD_MKDIR_P,$(dir $(TSCS_GEN_SOURCE)))
 	$(PY) $(TSCS_SCRIPT) $(TSCS_SPEC_JSON) --inc-path="<tasm/gen/tscs.h>" --out-c=$(TSCS_GEN_SOURCE) --out-h=$(TSCS_GEN_HEADER)
 
 $(EMU_LIB_STATIC): $(EMU_GEN_HEADERS)
