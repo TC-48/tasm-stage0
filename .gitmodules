@@ -1,9 +1,9 @@
-[submodule "deps/tc48-emu"]
-	path = deps/tc48-emu
-	url = https://github.com/TC-48/tc48-emu
 [submodule "deps/strlib"]
 	path = deps/strlib
 	url = https://github.com/Maqi-x/strlib
 [submodule "deps/tscs-spec"]
 	path = deps/tscs-spec
 	url = https://github.com/TC-48/tscs-specification
+[submodule "deps/tobj"]
+	path = deps/tobj
+	url = https://github.com/TC-48/tobj-stage0

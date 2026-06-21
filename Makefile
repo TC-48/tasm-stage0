@@ -39,7 +39,11 @@ CSTD       := -std=c11
 WARNINGS   := -Wall -Wextra -Werror=implicit-fallthrough -Wno-old-style-declaration
 PIC_CFLAGS := -fPIC
 
-EMU_DIR := $(DEPS_DIR)/tc48-emu
+TOBJ_DIR := $(DEPS_DIR)/tobj
+TOBJ_GEN_HEADERS := include/tobj/gen/tscs.h
+TOBJ_LIB_STATIC := $(TOBJ_DIR)/out/$(BUILD)/lib/libtobj.a
+
+EMU_DIR := $(TOBJ_DIR)/deps/tc48-emu
 EMU_GEN_HEADERS := include/tc48/gen/word-lits.h \
                    include/tc48/gen/version.h
 EMU_LIB_STATIC  := $(EMU_DIR)/out/$(BUILD)/lib/libtc48emu.a
@@ -49,7 +53,13 @@ TSCS_SPEC_JSON  := $(DEPS_DIR)/tscs-spec/spec.json
 TSCS_GEN_HEADER := $(INCLUDE_DIR)/tasm/gen/tscs.h
 TSCS_GEN_SOURCE := $(SRC_DIR)/gen/tscs.c
 
-COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR) -I$(EMU_DIR)/include -I$(DEPS_DIR)/strlib/src
+DEPS_INCLUDE := \
+	-I$(EMU_DIR)/include \
+	-I$(TOBJ_DIR)/include \
+	-I$(TOBJ_DIR)/deps \
+	-I$(DEPS_DIR)/strlib/src
+
+COMMON_CFLAGS := $(CSTD) $(WARNINGS) -I$(INCLUDE_DIR) $(DEPS_INCLUDE)
 
 ifeq ($(BUILD),debug)
 	CFLAGS := $(COMMON_CFLAGS) -O0 -g -DTC48_DEBUG -fsanitize=address,undefined
@@ -91,6 +101,8 @@ endif
 
 all: $(TARGET) $(LIB_STATIC) $(LIB_SHARED)
 
+$(TOBJ_GEN_HEADERS):
+	$(MAKE) -C $(TOBJ_DIR) $@
 $(EMU_GEN_HEADERS):
 	$(MAKE) -C $(EMU_DIR) FEATURES=none $@
 
@@ -99,6 +111,8 @@ $(TSCS_GEN_HEADER) $(TSCS_GEN_SOURCE) &: $(TSCS_SCRIPT)
 	@$(call CMD_MKDIR_P,$(dir $(TSCS_GEN_SOURCE)))
 	$(PY) $(TSCS_SCRIPT) $(TSCS_SPEC_JSON) --inc-path="<tasm/gen/tscs.h>" --out-c=$(TSCS_GEN_SOURCE) --out-h=$(TSCS_GEN_HEADER)
 
+$(TOBJ_LIB_STATIC): $(TOBJ_GEN_HEADERS)
+	$(MAKE) -C $(TOBJ_DIR) lib BUILD=$(BUILD)
 $(EMU_LIB_STATIC): $(EMU_GEN_HEADERS)
 	$(MAKE) -C $(EMU_DIR) libtc48emu FEATURES=none BUILD=$(BUILD)
 
@@ -110,9 +124,9 @@ $(LIB_SHARED): $(LIB_OBJ_SHARED)
 	@$(call CMD_MKDIR_P,$(dir $@))
 	$(CC) -shared $^ $(LDFLAGS) -o $@
 
-$(TARGET): $(LIB_STATIC) $(MAIN_OBJ) $(EMU_LIB_STATIC)
+$(TARGET): $(LIB_STATIC) $(MAIN_OBJ) $(EMU_LIB_STATIC) $(TOBJ_LIB_STATIC)
 	@$(call CMD_MKDIR_P,$(dir $@))
-	$(CC) $(MAIN_OBJ) $(LIB_STATIC) $(EMU_LIB_STATIC) $(LDFLAGS) -o $@
+	$(CC) $(MAIN_OBJ) $(LIB_STATIC) $(EMU_LIB_STATIC) $(TOBJ_LIB_STATIC) $(LDFLAGS) -o $@
 
 $(OBJ_ROOT_DIR)/%.o: %.c $(EMU_GEN_HEADERS)
 	@$(call CMD_MKDIR_P,$(dir $@))
