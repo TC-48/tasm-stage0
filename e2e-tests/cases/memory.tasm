@@ -1,14 +1,43 @@
-load r0:h0, num
-set r1:h0, 999
-store r1:h0, num
-load r2:h0, num
+jmp start
 
-cmp! r1:h0, r2:h0
-if(eq) out raz, 0sQQQQQQQQQ
+mystack:
 
-jmp err
+%org 100
+start:
+    load r0:h0, .num
+    set r1:h0, 999
+    store r1:h0, .num
+    load r2:h0, .num
 
-num: %half 123
+    cmp! r1:h0, r2:h0
+    if(ne) jmp err
+
+    set r0, .num
+    store.12 123, r0
+    load.12 r2:q0, r0
+    cmp! r2:q0, 123
+    if(ne) jmp err
+
+    set rsp, mystack
+    push.48 3
+    push.48 8
+    push.48 27
+
+    pop r0
+    cmp! r0, 27
+    if(ne) jmp err
+
+    pop r0
+    cmp! r0, 8
+    if(ne) jmp err
+
+    pop r0
+    cmp! r0, 3
+    if(ne) jmp err
+
+    out raz, 0sQQQQQQQQQ
+
+.num: %half 123
 
 err:
     set r1, 1

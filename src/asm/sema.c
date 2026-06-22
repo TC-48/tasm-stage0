@@ -9,7 +9,9 @@ bool tasm_validate_and_inspect(
     TasmWidth inferred_width = TASM_WIDTH_NONE;
 
     bool is_addr_op = (instr->opcode == TASM_OP_LOAD || instr->opcode == TASM_OP_STORE ||
-                      instr->opcode == TASM_OP_IN || instr->opcode == TASM_OP_OUT);
+                      instr->opcode == TASM_OP_IN || instr->opcode == TASM_OP_OUT ||
+                      instr->opcode == TASM_OP_DIN || instr->opcode == TASM_OP_IOUT ||
+                      instr->opcode == TASM_OP_DLOAD || instr->opcode == TASM_OP_ISTORE);
 
     for (usize i = 0; i < instr->num_operands; i++) {
         if (instr->operands[i].kind == TASM_OPERAND_REG) {
@@ -173,8 +175,7 @@ bool tasm_validate_and_inspect(
         *fmt = TC48_INSTR_FORMAT_NONE;
         return true;
 
-    case TASM_OP_LOAD: case TASM_OP_STORE:
-    case TASM_OP_IN:   case TASM_OP_OUT:
+    case TASM_OP_LOAD: case TASM_OP_IN:
     {
         if (instr->num_operands < 2 || instr->num_operands > 3) {
             tasm_report_error(diag, instr->span, "invalid operand count");
@@ -199,6 +200,142 @@ bool tasm_validate_and_inspect(
         if (has_imm) *fmt = TC48_INSTR_FORMAT_RRA;
         else *fmt = TC48_INSTR_FORMAT_RRR;
 
+        return true;
+    }
+
+    case TASM_OP_STORE: case TASM_OP_OUT:
+    {
+        if (instr->num_operands < 2 || instr->num_operands > 3) {
+            tasm_report_error(diag, instr->span, "invalid operand count");
+            return false;
+        }
+
+        if (instr->operands[0].kind == TASM_OPERAND_IMM || instr->operands[0].kind == TASM_OPERAND_LABEL) {
+            if (instr->operands[0].kind == TASM_OPERAND_LABEL && *width != TC48_OPERAND_WIDTH_48) {
+                tasm_report_error(diag, instr->operands[0].span, "label can be used as imm only in instructions with operand width 48");
+                return false;
+            }
+            for (usize i = 1; i < instr->num_operands; i++) {
+                if (instr->operands[i].kind != TASM_OPERAND_REG) {
+                    tasm_report_error(diag, instr->operands[i].span, "expected register for address/offset operands in IRR store/out");
+                    return false;
+                }
+            }
+            *fmt = TC48_INSTR_FORMAT_IRR;
+            return true;
+        }
+
+        if (instr->operands[0].kind != TASM_OPERAND_REG) {
+            tasm_report_error(diag, instr->operands[0].span, "expected register or immediate/label as first operand");
+            return false;
+        }
+
+        bool has_imm = false;
+        for (usize i = 1; i < instr->num_operands; i++) {
+            if (instr->operands[i].kind != TASM_OPERAND_REG) {
+                if (has_imm) {
+                    tasm_report_error(diag, instr->span, "too many immediate operands");
+                    return false;
+                }
+                has_imm = true;
+            }
+        }
+
+        if (has_imm) *fmt = TC48_INSTR_FORMAT_RRA;
+        else *fmt = TC48_INSTR_FORMAT_RRR;
+
+        return true;
+    }
+
+    case TASM_OP_DIN: case TASM_OP_DLOAD:
+    {
+        if (instr->num_operands != 2) {
+            tasm_report_error(diag, instr->span, "invalid operand count: expected 2");
+            return false;
+        }
+        if (instr->operands[0].kind != TASM_OPERAND_REG) {
+            tasm_report_error(diag, instr->operands[0].span, "expected register as destination operand");
+            return false;
+        }
+        if (instr->operands[1].kind != TASM_OPERAND_REG) {
+            tasm_report_error(diag, instr->operands[1].span, "expected register as pointer operand");
+            return false;
+        }
+        *fmt = TC48_INSTR_FORMAT_RR;
+        return true;
+    }
+
+    case TASM_OP_IOUT: case TASM_OP_ISTORE:
+    {
+        if (instr->num_operands != 2) {
+            tasm_report_error(diag, instr->span, "invalid operand count: expected 2");
+            return false;
+        }
+        if (instr->operands[1].kind != TASM_OPERAND_REG) {
+            tasm_report_error(diag, instr->operands[1].span, "expected register as pointer operand");
+            return false;
+        }
+
+        const TasmOperand* op0 = &instr->operands[0];
+        switch (op0->kind) {
+        case TASM_OPERAND_REG:
+            *fmt = TC48_INSTR_FORMAT_RR;
+            break;
+        case TASM_OPERAND_IMM:
+            *fmt = TC48_INSTR_FORMAT_IR;
+            break;
+        case TASM_OPERAND_LABEL:
+            if (*width != TC48_OPERAND_WIDTH_48) {
+                tasm_report_error(diag, op0->span, "label can be used as imm only in instructions with operand width 48");
+                return false;
+            }
+            *fmt = TC48_INSTR_FORMAT_IR;
+            break;
+        default:
+            return false;
+        }
+        return true;
+    }
+
+    case TASM_OP_PUSH:
+    {
+        if (instr->num_operands != 1) {
+            tasm_report_error(diag, instr->span, "invalid operand count: expected 1");
+            return false;
+        }
+
+        const TasmOperand* op0 = &instr->operands[0];
+        switch (op0->kind) {
+        case TASM_OPERAND_REG:
+            *fmt = TC48_INSTR_FORMAT_RR;
+            break;
+        case TASM_OPERAND_IMM:
+            *fmt = TC48_INSTR_FORMAT_IR;
+            break;
+        case TASM_OPERAND_LABEL:
+            if (*width != TC48_OPERAND_WIDTH_48) {
+                tasm_report_error(diag, op0->span, "label can be used as imm only in instructions with operand width 48");
+                return false;
+            }
+            *fmt = TC48_INSTR_FORMAT_IR;
+            break;
+        default:
+            return false;
+        }
+        return true;
+    }
+
+    case TASM_OP_POP:
+    {
+        if (instr->num_operands != 1) {
+            tasm_report_error(diag, instr->span, "invalid operand count: expected 1");
+            return false;
+        }
+        if (instr->operands[0].kind != TASM_OPERAND_REG) {
+            tasm_report_error(diag, instr->operands[0].span, "expected register as destination operand");
+            return false;
+        }
+        *fmt = TC48_INSTR_FORMAT_RR;
         return true;
     }
 
@@ -297,8 +434,10 @@ tc48_word tasm_get_instr_size(TasmDiagEngine* diag, const TasmInstr* instr) {
     case TC48_INSTR_FORMAT_RRR:
         size += REG_SIZE_TRYTES * 3; break;
     case TC48_INSTR_FORMAT_RI:
+    case TC48_INSTR_FORMAT_IR:
         size += REG_SIZE_TRYTES + get_imm_size(width); break;
     case TC48_INSTR_FORMAT_RRI:
+    case TC48_INSTR_FORMAT_IRR:
         size += (REG_SIZE_TRYTES * 2) + get_imm_size(width); break;
     case TC48_INSTR_FORMAT_RRA:
         size += (REG_SIZE_TRYTES * 2) + ADDR_SIZE_TRYTES; break;

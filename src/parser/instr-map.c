@@ -28,11 +28,19 @@ TasmOpcodeMapping tasm_opcode_map[] = {
     MAP("load", TASM_OP_LOAD),
     MAP("store", TASM_OP_STORE),
 
+    MAP("din", TASM_OP_DIN),
+    MAP("iout", TASM_OP_IOUT),
+    MAP("dload", TASM_OP_DLOAD),
+    MAP("istore", TASM_OP_ISTORE),
+
     MAP("set", TASM_OP_SET),
     MAP("inc", TASM_OP_INC),
     MAP("dec", TASM_OP_DEC),
     MAP("cmp", TASM_OP_CMP),
     MAP("jmp", TASM_OP_JMP),
+
+    MAP("push", TASM_OP_PUSH),
+    MAP("pop", TASM_OP_POP),
 };
 
 const usize tasm_opcode_map_size

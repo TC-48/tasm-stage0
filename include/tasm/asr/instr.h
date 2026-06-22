@@ -42,35 +42,42 @@ typedef struct TasmOperand {
 // [x] - optional operand
 // x/y - x or y
 typedef enum TasmOpcode {
-    TASM_OP_NOP,   // operands: none
-    TASM_OP_HALT,  // operands: none
+    TASM_OP_NOP,    // operands: none
+    TASM_OP_HALT,   // operands: none
 
-    TASM_OP_MIN,   // operands: reg, [reg], reg/imm
-    TASM_OP_MAX,   // operands: reg, [reg], reg/imm
-    TASM_OP_ROT,   // operands: reg, [reg], reg/imm
-    TASM_OP_SHL,   // operands: reg, [reg], reg/imm
-    TASM_OP_SHR,   // operands: reg, [reg], reg/imm
+    TASM_OP_MIN,    // operands: reg, [reg], reg/imm
+    TASM_OP_MAX,    // operands: reg, [reg], reg/imm
+    TASM_OP_ROT,    // operands: reg, [reg], reg/imm
+    TASM_OP_SHL,    // operands: reg, [reg], reg/imm
+    TASM_OP_SHR,    // operands: reg, [reg], reg/imm
 
-    TASM_OP_NOT,   // operands: reg, [reg/imm]
-    TASM_OP_NEG,   // operands: reg, [reg/imm]
+    TASM_OP_NOT,    // operands: reg, [reg/imm]
+    TASM_OP_NEG,    // operands: reg, [reg/imm]
 
-    TASM_OP_ADD,   // operands: reg, [reg], reg/imm
-    TASM_OP_SUB,   // operands: reg, [reg], reg/imm
-    TASM_OP_UMUL,  // operands: reg, [reg], reg/imm
-    TASM_OP_UDIV,  // operands: reg, [reg], reg/imm
-    TASM_OP_SMUL,  // operands: reg, [reg], reg/imm
-    TASM_OP_SDIV,  // operands: reg, [reg], reg/imm
+    TASM_OP_ADD,    // operands: reg, [reg], reg/imm
+    TASM_OP_SUB,    // operands: reg, [reg], reg/imm
+    TASM_OP_UMUL,   // operands: reg, [reg], reg/imm
+    TASM_OP_UDIV,   // operands: reg, [reg], reg/imm
+    TASM_OP_SMUL,   // operands: reg, [reg], reg/imm
+    TASM_OP_SDIV,   // operands: reg, [reg], reg/imm
 
-    TASM_OP_IN,    // operands: reg, reg/imm/(reg, imm)
-    TASM_OP_OUT,   // operands: reg, reg/imm/(reg, imm)
-    TASM_OP_LOAD,  // operands: reg, reg/imm/(reg, imm)
-    TASM_OP_STORE, // operands: reg, reg/imm/(reg, imm)
+    TASM_OP_IN,     // operands: reg, reg/imm/(reg, imm)
+    TASM_OP_OUT,    // operands: imm/reg, reg/imm/(reg, imm)
+    TASM_OP_LOAD,   // operands: reg, reg/imm/(reg, imm)
+    TASM_OP_STORE,  // operands: imm/reg, reg/imm/(reg, imm)
 
-    TASM_OP_SET,   // operands: reg, reg/imm
-    TASM_OP_INC,   // operands: reg, [reg/imm]
-    TASM_OP_DEC,   // operands: reg, [reg/imm]
-    TASM_OP_CMP,   // operands: reg, reg/imm
-    TASM_OP_JMP,   // operands: reg/imm
+    TASM_OP_DIN,    // operands: reg, reg
+    TASM_OP_IOUT,   // operands: reg/imm, reg
+    TASM_OP_DLOAD,  // operands: reg, reg
+    TASM_OP_ISTORE, // operands: reg/imm, reg
+
+    TASM_OP_SET,    // operands: reg, reg/imm
+    TASM_OP_INC,    // operands: reg, [reg/imm]
+    TASM_OP_DEC,    // operands: reg, [reg/imm]
+    TASM_OP_CMP,    // operands: reg, reg/imm
+    TASM_OP_JMP,    // operands: reg/imm
+    TASM_OP_PUSH,   // operands: reg/imm
+    TASM_OP_POP,    // operands: reg
 } TasmOpcode;
 
 typedef enum tc48_pred  TasmPred;

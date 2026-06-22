@@ -55,6 +55,14 @@ bool tasm_lower_instr(TasmDiagEngine* diag, const TasmResolver* resolver, const 
     case TASM_OP_IN:    out->opcode = TC48_OP_IN;    goto op_mem;
     case TASM_OP_OUT:   out->opcode = TC48_OP_OUT;   goto op_mem;
 
+    case TASM_OP_DIN:   out->opcode = TC48_OP_DIN;   goto op_din_dload;
+    case TASM_OP_DLOAD: out->opcode = TC48_OP_DLOAD; goto op_din_dload;
+    case TASM_OP_IOUT:  out->opcode = TC48_OP_IOUT;  goto op_iout_istore;
+    case TASM_OP_ISTORE: out->opcode = TC48_OP_ISTORE; goto op_iout_istore;
+
+    case TASM_OP_PUSH:  out->opcode = TC48_OP_ISTORE; goto op_push;
+    case TASM_OP_POP:   out->opcode = TC48_OP_DLOAD;  goto op_pop;
+
     case TASM_OP_INC: out->opcode = TC48_OP_ADD; goto op_inc_dec;
     case TASM_OP_DEC: out->opcode = TC48_OP_SUB; goto op_inc_dec;
 
@@ -119,6 +127,17 @@ op_2:
     return true;
 
 op_mem:
+    if (fmt == TC48_INSTR_FORMAT_IRR) {
+        out->operands.irr.r1 = instr->operands[1].reg.id;
+        out->operands.irr.r2 = (instr->num_operands == 3) ? instr->operands[2].reg.id : TC48_WHOLE_REG(TC48_CPU_REG_AZ);
+        tc48_word imm_val = 0;
+        if (!resolver->resolve_operand(resolver->context, &instr->operands[0], &imm_val)) {
+            return false;
+        }
+        fill_imm(&out->operands.irr.imm, width, imm_val);
+        return true;
+    }
+
     r1 = instr->operands[0].reg.id;
     r2 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
     r3 = TC48_WHOLE_REG(TC48_CPU_REG_AZ);
@@ -158,6 +177,44 @@ op_mem:
         }
         out->operands.rra.addr = imm_val;
     }
+    return true;
+
+op_din_dload:
+    out->operands.rr.r1 = instr->operands[0].reg.id;
+    out->operands.rr.r2 = instr->operands[1].reg.id;
+    return true;
+
+op_iout_istore:
+    if (fmt == TC48_INSTR_FORMAT_RR) {
+        out->operands.rr.r1 = instr->operands[0].reg.id;
+        out->operands.rr.r2 = instr->operands[1].reg.id;
+    } else {
+        out->operands.ir.r1 = instr->operands[1].reg.id;
+        tc48_word imm_val = 0;
+        if (!resolver->resolve_operand(resolver->context, &instr->operands[0], &imm_val)) {
+            return false;
+        }
+        fill_imm(&out->operands.ir.imm, width, imm_val);
+    }
+    return true;
+
+op_push:
+    if (fmt == TC48_INSTR_FORMAT_RR) {
+        out->operands.rr.r1 = instr->operands[0].reg.id;
+        out->operands.rr.r2 = TC48_WHOLE_REG(TC48_CPU_REG_SP);
+    } else {
+        out->operands.ir.r1 = TC48_WHOLE_REG(TC48_CPU_REG_SP);
+        tc48_word imm_val = 0;
+        if (!resolver->resolve_operand(resolver->context, &instr->operands[0], &imm_val)) {
+            return false;
+        }
+        fill_imm(&out->operands.ir.imm, width, imm_val);
+    }
+    return true;
+
+op_pop:
+    out->operands.rr.r1 = instr->operands[0].reg.id;
+    out->operands.rr.r2 = TC48_WHOLE_REG(TC48_CPU_REG_SP);
     return true;
 
 op_inc_dec:
