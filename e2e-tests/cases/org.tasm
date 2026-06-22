@@ -1,0 +1,35 @@
+jmp start
+
+data:
+
+%org 100
+start:
+    set r10, data
+
+    set r0, 123 // 123
+    store r0, r10, 0
+
+    add r0, 20 // 143
+    store r0, r10, 8
+
+    umul r0, 2 // 286
+    store r0, r10, 16
+
+    load r1, r10, 0
+    load r2, r10, 8
+    load r3, r10, 16
+
+    cmp! r1, 123
+    if(ne) jmp err
+
+    cmp! r2, 143
+    if(ne) jmp err
+
+    cmp! r3, 286
+    if(ne) jmp err
+
+    out raz, 0sQQQQQQQQQ
+
+err:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ
