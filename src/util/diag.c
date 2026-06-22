@@ -24,6 +24,13 @@ static void print_span(TasmSourceSpan span) {
     va_end(args);                \
     fprintf(stderr, "\n");       \
 
+void tasm_print_error(const char* fmt, ...) {
+    if (tasm_ansi_enabled) fprintf(stderr, "\033[1;31merror:\033[0m ");
+    else                   fprintf(stderr, "error: ");
+
+    STUFF(fmt);
+}
+
 void tasm_report_warn(TasmDiagEngine* engine, TasmSourceSpan span, const char* fmt, ...) {
     if (engine == NULL) return;
     print_span(span);

@@ -60,7 +60,7 @@ int compile(const char* tasm_path, const char* input_path, const char* temp_path
     }
 
     if (pid == 0) {
-        const char* args[] = { tasm_path, input_path, temp_path, NULL };
+        const char* args[] = { tasm_path, input_path, "-o", temp_path, NULL };
         // this cast is probably unsafe but since execve api is shit,
         // i guess there is no better way. if it works don't touch it or sth.
         execve(tasm_path, (char* const*)args, NULL);
