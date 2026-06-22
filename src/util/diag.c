@@ -25,7 +25,7 @@ static void print_span(TasmSourceSpan span) {
     fprintf(stderr, "\n");       \
 
 void tasm_report_warn(TasmDiagEngine* engine, TasmSourceSpan span, const char* fmt, ...) {
-    if (engine != NULL) engine->warn_count++;
+    if (engine == NULL) return;
     print_span(span);
 
     if (tasm_ansi_enabled) fprintf(stderr, "\033[1;35mwarning:\033[0m ");
@@ -35,7 +35,7 @@ void tasm_report_warn(TasmDiagEngine* engine, TasmSourceSpan span, const char* f
 }
 
 void tasm_report_error(TasmDiagEngine* engine, TasmSourceSpan span, const char* fmt, ...) {
-    if (engine != NULL) engine->error_count++;
+    if (engine == NULL) return;
     print_span(span);
 
     if (tasm_ansi_enabled) fprintf(stderr, "\033[1;31merror:\033[0m ");
