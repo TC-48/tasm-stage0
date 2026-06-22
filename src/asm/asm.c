@@ -78,20 +78,7 @@ static bool resolve_operand(void* ctx, const TasmOperand* op, tc48_word* out) {
 static bool lower_directive(TasmAssembler* as, const TasmAsrDir* dir, tc48_word* out) {
     // already handled in pass1()
     if (dir->kind == TASM_DIR_ORG) return false;
-
-    if (dir->value.kind == TASM_OPERAND_IMM) {
-        *out = (tc48_word)dir->value.imm;
-        return true;
-    } else if (dir->value.kind == TASM_OPERAND_LABEL) {
-        TasmSymbol* s = find_symbol(as, dir->value.label.name, dir->value.label.is_local, as->current_scope_id);
-        if (!s) {
-            tasm_report_error(as->diag, dir->value.span, "undefined symbol: "SV_FMT, SV_FARG(dir->value.label.name));
-            return false;
-        }
-        *out = as->item_addresses[s->id];
-        return true;
-    }
-    return false;
+    return resolve_operand(as, &dir->value, out);
 }
 
 static void pass1(TasmAssembler* as, tc48_word* out_size) {
@@ -178,6 +165,5 @@ static void pass2(TasmAssembler* as, TasmIR* ir) {
                 }
             }
         }
-
     }
 }
