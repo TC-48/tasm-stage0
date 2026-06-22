@@ -113,6 +113,59 @@ static void pass1(TasmAssembler* as, tc48_word* out_size) {
     *out_size = current_addr;
 }
 
+static void pass2_handle_instruction(TasmAssembler* as, TasmIR* ir, TasmAsrItem* item, tc48_word addr) {
+    TasmIRItem ir_item = { .address = addr, .kind = TASM_LIR_INSTR };
+    TasmResolver resolver = { .resolve_operand = resolve_operand, .context = as };
+
+    // NOTE: passing NULL here fixes double-diagnostics problem
+    if (tasm_lower_instr(NULL, &resolver, &item->as.instr, &ir_item.as.instr)) {
+        tasm_ir_add(ir, &ir_item);
+    }
+}
+
+static void pass2_handle_string_directive(TasmAssembler* as, TasmIR* ir, TasmAsrItem* item, tc48_word addr) {
+    usize count = 0;
+    tasm_parse_lit_string_chars(as->diag, item->as.directive.value.span, item->as.directive.value.str, NULL, &count);
+
+    int32_t* chars = malloc(count * sizeof(int32_t));
+    if (tasm_parse_lit_string_chars(as->diag, item->as.directive.value.span, item->as.directive.value.str, chars, &count)) {
+        for (usize c = 0; c < count; c++) {
+            TasmIRItem ir_item = {
+                .address = addr + c,
+                .kind = TASM_LIR_DATA_TRYTE,
+                .as.data = (tc48_word)chars[c]
+            };
+            tasm_ir_add(ir, &ir_item);
+        }
+    }
+    free(chars);
+}
+
+static void pass2_handle_directive(TasmAssembler* as, TasmIR* ir, TasmAsrItem* item, tc48_word addr) {
+    if (item->as.directive.kind == TASM_DIR_ORG) {
+        return;
+    }
+
+    if (item->as.directive.kind == TASM_DIR_STRING) {
+        pass2_handle_string_directive(as, ir, item, addr);
+        return;
+    }
+
+    TasmIRItem ir_item = { .address = addr };
+
+    switch (item->as.directive.kind) {
+        case TASM_DIR_TRYTE:   ir_item.kind = TASM_LIR_DATA_TRYTE;   break;
+        case TASM_DIR_QUARTER: ir_item.kind = TASM_LIR_DATA_QUARTER; break;
+        case TASM_DIR_HALF:    ir_item.kind = TASM_LIR_DATA_HALF;    break;
+        case TASM_DIR_WORD:    ir_item.kind = TASM_LIR_DATA_WORD;    break;
+        default: break;
+    }
+
+    if (lower_directive(as, &item->as.directive, &ir_item.as.data)) {
+        tasm_ir_add(ir, &ir_item);
+    }
+}
+
 static void pass2(TasmAssembler* as, TasmIR* ir) {
     as->current_scope_id = (usize)-1;
 
@@ -120,50 +173,17 @@ static void pass2(TasmAssembler* as, TasmIR* ir) {
         TasmAsrItem* item = &as->asr->items[i];
         tc48_word addr = as->item_addresses[item->id];
 
-        if (item->kind == TASM_IR_LABEL && !item->as.label.is_local) {
-            as->current_scope_id = item->id;
+        if (item->kind == TASM_IR_LABEL) {
+            if (!item->as.label.is_local) {
+                as->current_scope_id = item->id;
+            }
             continue;
         }
 
         if (item->kind == TASM_IR_INSTR) {
-            TasmIRItem ir_item = { .address = addr, .kind = TASM_LIR_INSTR };
-            TasmResolver resolver = { .resolve_operand = resolve_operand, .context = as };
-
-            // NOTE: passing NULL here fixes double-diagnostics problem
-            if (tasm_lower_instr(NULL, &resolver, &item->as.instr, &ir_item.as.instr)) {
-                tasm_ir_add(ir, &ir_item);
-            }
-        } else if (item->kind == TASM_IR_DIRECTIVE && item->as.directive.kind != TASM_DIR_ORG) {
-            if (item->as.directive.kind == TASM_DIR_STRING) {
-                usize count = 0;
-                tasm_parse_lit_string_chars(as->diag, item->as.directive.value.span, item->as.directive.value.str, NULL, &count);
-                int32_t* chars = malloc(count * sizeof(int32_t));
-                if (tasm_parse_lit_string_chars(as->diag, item->as.directive.value.span, item->as.directive.value.str, chars, &count)) {
-                    for (usize c = 0; c < count; c++) {
-                        TasmIRItem ir_item = {
-                            .address = addr + c,
-                            .kind = TASM_LIR_DATA_TRYTE,
-                            .as.data = (tc48_word)chars[c]
-                        };
-                        tasm_ir_add(ir, &ir_item);
-                    }
-                }
-                free(chars);
-            } else {
-                TasmIRItem ir_item = { .address = addr };
-
-                switch (item->as.directive.kind) {
-                case TASM_DIR_TRYTE:   ir_item.kind = TASM_LIR_DATA_TRYTE;   break;
-                case TASM_DIR_QUARTER: ir_item.kind = TASM_LIR_DATA_QUARTER; break;
-                case TASM_DIR_HALF:    ir_item.kind = TASM_LIR_DATA_HALF;    break;
-                case TASM_DIR_WORD:    ir_item.kind = TASM_LIR_DATA_WORD;    break;
-                default: break;
-                }
-
-                if (lower_directive(as, &item->as.directive, &ir_item.as.data)) {
-                    tasm_ir_add(ir, &ir_item);
-                }
-            }
+            pass2_handle_instruction(as, ir, item, addr);
+        } else if (item->kind == TASM_IR_DIRECTIVE) {
+            pass2_handle_directive(as, ir, item, addr);
         }
     }
 }
