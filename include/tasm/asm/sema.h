@@ -1,4 +1,5 @@
-#include <tasm/asm/asm.h>
+#include <tasm/util/diag.h>
+#include <tasm/asr/buf.h>
 
 bool tasm_validate_and_inspect(
     TasmDiagEngine* diag, const TasmInstr* instr,

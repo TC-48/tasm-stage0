@@ -1,9 +1,10 @@
-#include "tasm/asr/buf.h"
 #include <tasm/srcdoc/srcdoc.h>
 #include <tasm/lexer/lexer.h>
 #include <tasm/parser/parser.h>
-#include <tasm/asm/asm.h>
-#include <tasm/asm/emit.h>
+#include <tasm/asr/buf.h>
+
+#include <tasm/asm/backends/raw.h>
+
 #include <tasm/asr/dump.h>
 #include <stdio.h>
 
@@ -31,19 +32,17 @@ int main(int argc, const char* argv[]) {
     tasm_asr_init(&asr);
     tasm_parse(&parser, &asr);
 
-    TasmAssembler as;
-    tasm_asm_init(&as, &asr, &diag);
+    TasmBackendRaw as;
+    tasm_raw_asm_init(&as, &asr, &diag);
 
-    TasmIR ir = tasm_assemble(&as);
-
+    tc48_memory* prog = tasm_assemble_to_raw(&as);
     if (diag.error_count == 0) {
-        tasm_emit(&ir, output_path);
+        tc48_mem_save(prog, output_path);
     } else {
         fprintf(stderr, "assembly failed with %d errors\n", (int)diag.error_count);
     }
 
-    tasm_ir_free(&ir);
-    tasm_asm_free(&as);
+    tasm_raw_asm_free(&as);
     tasm_asr_free(&asr);
     tasm_srcdoc_free(&source);
 

@@ -1,6 +1,5 @@
 #include <tasm/asm/lower.h>
 #include <tasm/asm/sema.h>
-#include <tasm/asm/asm.h>
 
 #include <tc48/cpu/regs.h>
 

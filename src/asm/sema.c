@@ -1,8 +1,5 @@
 #include <tasm/asm/sema.h>
-#include <tasm/asm/asm.h>
-
 #include <tc48/cpu/regs.h>
-
 #include <tasm/parser/literals.h>
 
 bool tasm_validate_and_inspect(

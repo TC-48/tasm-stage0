@@ -1,6 +1,8 @@
 #pragma once
 
-#include <tasm/asm/asm.h>
+#include <tasm/util/diag.h>
+#include <tasm/asr/defs.h>
+
 #include <stdbool.h>
 
 typedef struct TasmResolver {
