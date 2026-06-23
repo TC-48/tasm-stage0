@@ -1,7 +1,6 @@
+#pragma once
 #include <tasm/util/diag.h>
-
 #include <vector/vector.h>
-
 #include <stdbool.h>
 
 typedef enum TasmArgparseResult {
