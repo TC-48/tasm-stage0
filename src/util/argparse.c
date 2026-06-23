@@ -25,6 +25,22 @@ static bool parse_format(const char* arg, TasmOutputFormat* out) {
     return true;
 }
 
+static bool parse_preference(const char* arg, TasmPreference* out) {
+    if      (streql(arg, "never"))  *out = TASM_PREF_NEVER;
+    else if (streql(arg, "auto"))   *out = TASM_PREF_AUTO;
+    else if (streql(arg, "always")) *out = TASM_PREF_ALWAYS;
+    else return false;
+    return true;
+}
+
+#define ADVANCE_ARG(THING) do {                                   \
+    if (++i >= argc) {                                            \
+        tasm_print_help(argv[0]);                                 \
+        tasm_print_error("missing "THING" after '%s' flag", arg); \
+        return TASM_ARGPARSE_FAIL;                                \
+    }                                                             \
+} while (0)
+
 TasmArgparseResult tasm_parse_args(int argc, const char* argv[], TasmCmdline* out) {
     out->format = TASM_FORMAT_RAW;
     out->input_files = (TasmPaths) {0};
@@ -37,22 +53,18 @@ TasmArgparseResult tasm_parse_args(int argc, const char* argv[], TasmCmdline* ou
             tasm_print_help(argv[0]);
             return TASM_ARGPARSE_SKIP;
         } else if (streql(arg, "-f") || streql(arg, "--format")) {
-            if (++i >= argc) {
-                tasm_print_help(argv[0]);
-                tasm_print_error("missing format after '%s' flag", arg);
-                return TASM_ARGPARSE_FAIL;
-            }
-
+            ADVANCE_ARG("format");
             if (!parse_format(argv[i], &out->format)) {
                 return TASM_ARGPARSE_FAIL;
             }
         } else if (streql(arg, "-o") || streql(arg, "--output")) {
-            if (++i >= argc) {
-                tasm_print_help(argv[0]);
-                tasm_print_error("missing path after '%s' flag", arg);
+            ADVANCE_ARG("path");
+            out->output = argv[i];
+        } else if (streql(arg, "--color")) {
+            ADVANCE_ARG("argument");
+            if (!parse_preference(argv[i], &out->color)) {
                 return TASM_ARGPARSE_FAIL;
             }
-            out->output = argv[i];
         } else if (arg[0] == '-') {
             tasm_print_help(argv[0]);
             tasm_print_error("unknown option '%s'", arg);

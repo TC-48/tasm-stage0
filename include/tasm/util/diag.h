@@ -3,6 +3,7 @@
 #include <tasm/srcdoc/srcspan.h>
 
 extern bool tasm_ansi_enabled;
+bool tasm_color_auto(FILE* stream);
 
 typedef struct TasmDiagEngine {
     usize error_count, warn_count;

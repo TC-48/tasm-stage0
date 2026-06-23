@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <tasm/util/diag.h>
 
 #include <tasm/srcdoc/srcspan.h>
@@ -7,7 +9,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-bool tasm_ansi_enabled = true;
+#ifdef _WIN32
+#  include <io.h>
+#  define isatty _isatty
+#  define fileno _fileno
+#else
+#  include <unistd.h>
+#endif
+
+bool tasm_ansi_enabled = false;
+
+bool tasm_color_auto(FILE* stream) {
+    const char* no_color = getenv("NO_COLOR");
+    if (no_color && no_color[0] != '\0') {
+        return false;
+    }
+    return isatty(fileno(stream));
+}
 
 static void print_span(TasmSourceSpan span) {
     if (tasm_srcspan_is_valid(span)) {
