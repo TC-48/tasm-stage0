@@ -102,11 +102,23 @@ static bool lower_string_directive(TasmBackendRaw* as, tc48_memory* mem, const T
 }
 
 static bool lower_directive(TasmBackendRaw* as, const TasmAsrDir* dir, tc48_memory* mem, tc48_word addr) {
+    switch (dir->kind) {
     // already handled in pass1()
-    if (dir->kind == TASM_DIR_ORG) return false;
+    case TASM_DIR_ORG: return false;
 
-    if (dir->kind == TASM_DIR_STRING) {
+    case TASM_DIR_STRING:
         return lower_string_directive(as, mem, dir, addr);
+
+    case TASM_DIR_WEAK:
+    case TASM_DIR_LOCAL:
+    case TASM_DIR_GLOBAL:
+    case TASM_DIR_SECTION:
+        tasm_report_error(as->diag, dir->span, "directive unsupported in raw mode");
+        return false;
+
+    case TASM_DIR_TRYTE: case TASM_DIR_QUARTER:
+    case TASM_DIR_HALF:  case TASM_DIR_WORD:
+        break;
     }
 
     for (usize i = 0; i < VECTOR_SIZE(&dir->operands); i++) {

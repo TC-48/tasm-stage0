@@ -7,11 +7,13 @@
 #include <tasm/parser/parser.h>
 
 #include <tasm/asr/buf.h>
+#include <tasm/asr/dump.h>
 #include <tasm/util/diag.h>
 
+#include <tasm/asm/backends/tobj.h>
 #include <tasm/asm/backends/raw.h>
 
-#include <tasm/asr/dump.h>
+#include <tc48/macros.h>
 
 void tasm_driver_init(TasmDriver* driver, const TasmCmdline* cmdline) {
     driver->cmdline = cmdline;
@@ -27,10 +29,15 @@ static tc48_memory* dispatch_compilation(TasmDriver* driver, TasmAsrBuf* asr) {
         tasm_raw_asm_free(&as);
         return out;
     }
-    case TASM_FORMAT_TOBJ:
-        tasm_print_error("emitting TOBJ file not yet supported");
-        return NULL;
+    case TASM_FORMAT_TOBJ: {
+        TasmBackendTObj as;
+        tasm_tobj_asm_init(&as, asr, &driver->diag);
+        tc48_memory* out = tasm_assemble_to_tobj(&as);
+        tasm_tobj_asm_free(&as);
+        return out;
     }
+    }
+    TC48_UNREACHABLE_ENUM_VAL(TasmOutputFormat, driver->cmdline->format);
 }
 
 int tasm_driver_run(TasmDriver* driver) {

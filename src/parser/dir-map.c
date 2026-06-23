@@ -8,8 +8,12 @@ TasmAsrDirMapping tasm_directive_map[] = {
     MAP("half",    TASM_DIR_HALF),
     MAP("quarter", TASM_DIR_QUARTER),
     MAP("tryte",   TASM_DIR_TRYTE),
-    MAP("org",     TASM_DIR_ORG),
     MAP("string",  TASM_DIR_STRING),
+
+    MAP("org",     TASM_DIR_ORG),
+    MAP("global",  TASM_DIR_GLOBAL),
+    MAP("local",   TASM_DIR_LOCAL),
+    MAP("weak",    TASM_DIR_WEAK),
 };
 
 const usize tasm_directive_map_size

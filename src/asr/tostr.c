@@ -1,6 +1,8 @@
 #include <tasm/asr/tostr.h>
 #include <tasm/asr/buf.h>
 
+#include <tc48/macros.h>
+
 StringView tasm_opcode_to_str(TasmOpcode op) {
     switch (op) {
     case TASM_OP_NOP:    return SV("nop");
@@ -78,4 +80,21 @@ StringView tasm_wcfr_to_str(TasmWCFR wcfr) {
     case TC48_WCFR_FULL: return SV("full");
     }
     return SV_NULL;
+}
+
+StringView tasm_dir_kind_to_str(TasmAsrDirKind dk) {
+    switch (dk) {
+    case TASM_DIR_WORD:    return SV("word");
+    case TASM_DIR_HALF:    return SV("half");
+    case TASM_DIR_QUARTER: return SV("quarter");
+    case TASM_DIR_TRYTE:   return SV("tryte");
+    case TASM_DIR_STRING:  return SV("string");
+
+    case TASM_DIR_ORG:     return SV("org");
+    case TASM_DIR_GLOBAL:  return SV("global");
+    case TASM_DIR_LOCAL:   return SV("local");
+    case TASM_DIR_WEAK:    return SV("weak");
+    case TASM_DIR_SECTION: return SV("section");
+    }
+    TC48_UNREACHABLE_ENUM_VAL(TasmAsrDirKind, dk);
 }

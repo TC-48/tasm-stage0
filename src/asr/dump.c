@@ -69,16 +69,7 @@ void tasm_dump_instr(const TasmInstr* instr, FILE* out) {
 }
 
 void tasm_dump_directive(const TasmAsrDir* dir, FILE* out) {
-    const char* kind_str = "unknown";
-    switch (dir->kind) {
-        case TASM_DIR_WORD:    kind_str = "word";    break;
-        case TASM_DIR_HALF:    kind_str = "half";    break;
-        case TASM_DIR_QUARTER: kind_str = "quarter"; break;
-        case TASM_DIR_TRYTE:   kind_str = "tryte";   break;
-        case TASM_DIR_ORG:     kind_str = "org";     break;
-        case TASM_DIR_STRING:  kind_str = "string";  break;
-    }
-    fprintf(out, "DIRECTIVE: kind=%s", kind_str);
+    fprintf(out, "DIRECTIVE: kind="SV_FMT, SV_FARG(tasm_dir_kind_to_str(dir->kind)));
     for (TasmOperand* op = dir->operands.begin; op < dir->operands.end; ++op) {
         fprintf(out, "%s", op == dir->operands.begin ? ", values = " : ", ");
         tasm_dump_operand(op, out);

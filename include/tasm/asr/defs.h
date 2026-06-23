@@ -17,8 +17,13 @@ typedef enum TasmAsrDirKind {
     TASM_DIR_HALF,
     TASM_DIR_QUARTER,
     TASM_DIR_TRYTE,
-    TASM_DIR_ORG,
     TASM_DIR_STRING,
+
+    TASM_DIR_ORG,
+    TASM_DIR_SECTION,
+    TASM_DIR_GLOBAL,
+    TASM_DIR_LOCAL,
+    TASM_DIR_WEAK,
 } TasmAsrDirKind;
 
 typedef struct TasmAsrDir {

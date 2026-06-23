@@ -1,6 +1,8 @@
 #include <tasm/asm/sema.h>
-#include <tc48/cpu/regs.h>
 #include <tasm/parser/literals.h>
+
+#include <tc48/cpu/regs.h>
+#include <tc48/macros.h>
 
 bool tasm_validate_and_inspect(
     TasmDiagEngine* diag, const TasmInstr* instr,
@@ -451,7 +453,6 @@ tc48_word tasm_get_directive_size(TasmDiagEngine* diag, const TasmAsrDir* dir) {
     case TASM_DIR_HALF:    return 4 * VECTOR_SIZE(&dir->operands);
     case TASM_DIR_QUARTER: return 2 * VECTOR_SIZE(&dir->operands);
     case TASM_DIR_TRYTE:   return 1 * VECTOR_SIZE(&dir->operands);
-    case TASM_DIR_ORG:     return 0;
     case TASM_DIR_STRING: {
         tc48_word total_count = 0;
         for (TasmOperand* op = dir->operands.begin; op < dir->operands.end; ++op) {
@@ -462,7 +463,12 @@ tc48_word tasm_get_directive_size(TasmDiagEngine* diag, const TasmAsrDir* dir) {
         }
         return total_count;
     }
+
+    case TASM_DIR_ORG: case TASM_DIR_SECTION:
+    case TASM_DIR_LOCAL: case TASM_DIR_GLOBAL:
+    case TASM_DIR_WEAK:
+        return 0;
     }
-    return 0;
+    TC48_UNREACHABLE_ENUM_VAL(TasmAsrDirKind, dir->kind);
 }
 
