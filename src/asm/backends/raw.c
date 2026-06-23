@@ -79,20 +79,24 @@ static bool resolve_operand(void* ctx, const TasmOperand* op, tc48_word* out) {
 
 
 static bool lower_string_directive(TasmBackendRaw* as, tc48_memory* mem, const TasmAsrDir* dir, tc48_word addr) {
-    usize count = 0;
-    if (!tasm_parse_lit_string_chars(as->diag, dir->value.span, dir->value.str, NULL, &count)) {
-        return false;
-    }
-
-    int32_t* chars = malloc(count * sizeof(int32_t));
-    if (chars == NULL) return false;
-
-    if (tasm_parse_lit_string_chars(as->diag, dir->value.span, dir->value.str, chars, &count)) {
-        for (usize c = 0; c < count; c++) {
-            tc48_mem_store6(mem, addr + c, chars[c]);
+    tc48_word current_offset = 0;
+    for (TasmOperand* op = dir->operands.begin; op < dir->operands.end; ++op) {
+        usize count = 0;
+        if (!tasm_parse_lit_string_chars(as->diag, op->span, op->str, NULL, &count)) {
+            return false;
         }
+
+        int32_t* chars = malloc(count * sizeof(int32_t));
+        if (chars == NULL) return false;
+
+        if (tasm_parse_lit_string_chars(as->diag, op->span, op->str, chars, &count)) {
+            for (usize c = 0; c < count; c++) {
+                tc48_mem_store6(mem, addr + current_offset + c, chars[c]);
+            }
+        }
+        free(chars);
+        current_offset += count;
     }
-    free(chars);
 
     return true;
 }
@@ -105,18 +109,30 @@ static bool lower_directive(TasmBackendRaw* as, const TasmAsrDir* dir, tc48_memo
         return lower_string_directive(as, mem, dir, addr);
     }
 
-    tc48_word value;
-    if (!resolve_operand(as, &dir->value, &value)) {
-        return false;
-    }
+    for (usize i = 0; i < VECTOR_SIZE(&dir->operands); i++) {
+        tc48_word value;
+        if (!resolve_operand(as, &dir->operands.begin[i], &value)) {
+            return false;
+        }
 
-    switch (dir->kind) {
-    case TASM_DIR_TRYTE:   tc48_mem_store6 (mem, addr, (tc48_tryte)value);   return true;
-    case TASM_DIR_QUARTER: tc48_mem_store12(mem, addr, (tc48_quarter)value); return true;
-    case TASM_DIR_HALF:    tc48_mem_store24(mem, addr, (tc48_half)value);    return true;
-    case TASM_DIR_WORD:    tc48_mem_store48(mem, addr, (tc48_word)value);    return true;
-    default: return false; // probably unreachable
+        switch (dir->kind) {
+        case TASM_DIR_TRYTE:
+            tc48_mem_store6(mem, addr + i * 1, (tc48_tryte)value);
+            break;
+        case TASM_DIR_QUARTER:
+            tc48_mem_store12(mem, addr + i * 2, (tc48_quarter)value);
+            break;
+        case TASM_DIR_HALF:
+            tc48_mem_store24(mem, addr + i * 4, (tc48_half)value);
+            break;
+        case TASM_DIR_WORD:
+            tc48_mem_store48(mem, addr + i * 8, (tc48_word)value);
+            break;
+        default:
+            return false; // probably unreachable
+        }
     }
+    return true;
 }
 
 static void pass1(TasmBackendRaw* as, tc48_word* out_size) {
@@ -139,7 +155,9 @@ static void pass1(TasmBackendRaw* as, tc48_word* out_size) {
             };
         } else if (item->kind == TASM_IR_DIRECTIVE) {
             if (item->as.directive.kind == TASM_DIR_ORG) {
-                current_addr = item->as.directive.value.imm;
+                if (VECTOR_SIZE(&item->as.directive.operands) != 1) {
+                    tasm_report_error(as->diag, item->span, "%%org directive expects exactly one operand");
+                } else current_addr = item->as.directive.operands.begin[0].imm;
             } else {
                 current_addr += tasm_get_directive_size(as->diag, &item->as.directive);
             }

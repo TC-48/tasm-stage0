@@ -1,4 +1,5 @@
 #include <tasm/parser/parser.h>
+#include <stdlib.h>
 
 #include <tasm/parser/literals.h>
 
@@ -323,8 +324,18 @@ static TasmAsrItem parse_directive(TasmParser* parser) {
         );
     }
 
-    TasmOperand value = parse_operand(parser);
-    TasmSourceSpan span = tasm_srcspan_merge(percent.span, value.span);
+    TasmOperands operands = {0};
+    TasmSourceSpan span = percent.span;
+
+    if (!check(parser, TT_NEWLINE) && !check(parser, TT_EOF)) {
+        do {
+            TasmOperand op = parse_operand(parser);
+            span = tasm_srcspan_merge(span, op.span);
+            tasm_operands_push(&operands, op);
+        } while (match(parser, TT_COMMA));
+    } else {
+        tasm_report_error(parser->diag, name.span, "expected at least one operand for directive");
+    }
 
     return (TasmAsrItem) {
         .kind = TASM_IR_DIRECTIVE,
@@ -332,8 +343,8 @@ static TasmAsrItem parse_directive(TasmParser* parser) {
         .as.directive = {
             .kind = kind,
             .span = span,
-            .value = value,
-        }
+            .operands = operands,
+        },
     };
 }
 

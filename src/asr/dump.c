@@ -78,8 +78,11 @@ void tasm_dump_directive(const TasmAsrDir* dir, FILE* out) {
         case TASM_DIR_ORG:     kind_str = "org";     break;
         case TASM_DIR_STRING:  kind_str = "string";  break;
     }
-    fprintf(out, "DIRECTIVE: kind=%s, value=", kind_str);
-    tasm_dump_operand(&dir->value, out);
+    fprintf(out, "DIRECTIVE: kind=%s", kind_str);
+    for (TasmOperand* op = dir->operands.begin; op < dir->operands.end; ++op) {
+        fprintf(out, "%s", op == dir->operands.begin ? ", values = " : ", ");
+        tasm_dump_operand(op, out);
+    }
     fprintf(out, "\n");
 }
 

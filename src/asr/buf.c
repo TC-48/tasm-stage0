@@ -2,6 +2,10 @@
 
 #include <stdlib.h>
 
+// i just didn't know where to put this
+// but it doesn't matter anyway
+VECTOR_DEFINE(TasmOperands, tasm_operands, TasmOperand);
+
 #define TASM_IR_INITIAL_CAPACITY 8
 
 static bool tasm_asr_resize(TasmAsrBuf* asr, usize new_capacity) {
@@ -20,7 +24,10 @@ void tasm_asr_init(TasmAsrBuf* asr) {
 }
 
 void tasm_asr_free(TasmAsrBuf* asr) {
-    if (asr->items) {
+    if (asr->items != NULL) {
+        for (usize i = 0; i < asr->count; i++)
+            if (asr->items[i].kind == TASM_IR_DIRECTIVE)
+                tasm_operands_free(&asr->items[i].as.directive.operands);
         free(asr->items);
     }
 

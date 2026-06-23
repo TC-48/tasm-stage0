@@ -447,17 +447,20 @@ tc48_word tasm_get_instr_size(TasmDiagEngine* diag, const TasmInstr* instr) {
 
 tc48_word tasm_get_directive_size(TasmDiagEngine* diag, const TasmAsrDir* dir) {
     switch (dir->kind) {
-    case TASM_DIR_WORD:    return 8;
-    case TASM_DIR_HALF:    return 4;
-    case TASM_DIR_QUARTER: return 2;
-    case TASM_DIR_TRYTE:   return 1;
+    case TASM_DIR_WORD:    return 8 * VECTOR_SIZE(&dir->operands);
+    case TASM_DIR_HALF:    return 4 * VECTOR_SIZE(&dir->operands);
+    case TASM_DIR_QUARTER: return 2 * VECTOR_SIZE(&dir->operands);
+    case TASM_DIR_TRYTE:   return 1 * VECTOR_SIZE(&dir->operands);
     case TASM_DIR_ORG:     return 0;
     case TASM_DIR_STRING: {
-        usize count = 0;
-        if (tasm_parse_lit_string_chars(diag, dir->value.span, dir->value.str, NULL, &count)) {
-            return (tc48_word)count;
+        tc48_word total_count = 0;
+        for (TasmOperand* op = dir->operands.begin; op < dir->operands.end; ++op) {
+            usize count = 0;
+            if (tasm_parse_lit_string_chars(diag, op->span, op->str, NULL, &count)) {
+                total_count += count;
+            }
         }
-        return 0;
+        return total_count;
     }
     }
     return 0;

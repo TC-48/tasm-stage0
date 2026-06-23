@@ -1,0 +1,29 @@
+start:
+    set r0, end
+    sub r0, myarr
+
+    set r1, 0
+.loop:
+    cmp! r1, r0
+    if(eq) jmp .end
+
+    load r2:t0, myarr, r1
+    cmp! r2:t0, r1:t7
+    if(ne) jmp err
+
+    inc r1
+    jmp .loop
+
+.end:
+    out raz, 0sQQQQQQQQQ
+
+err:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ
+
+myarr:
+    %tryte 0, 1, 2, 3, 4
+    %string "\c{12}"
+    %tryte 6, 0t000021, 8
+    %quarter 0n010'011
+end:

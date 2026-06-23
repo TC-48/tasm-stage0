@@ -7,7 +7,10 @@
 #include <tc48/cpu/opcode.h>
 #include <tc48/cpu/instr.h>
 
+#include <vector/vector.h>
 #include <strlib/sv.h>
+
+VECTOR_DECLARE(TasmOperands, tasm_operands, TasmOperand);
 
 typedef enum TasmAsrDirKind {
     TASM_DIR_WORD,
@@ -20,8 +23,8 @@ typedef enum TasmAsrDirKind {
 
 typedef struct TasmAsrDir {
     TasmAsrDirKind kind;
-    TasmSourceSpan    span;
-    TasmOperand       value;
+    TasmSourceSpan span;
+    TasmOperands operands;
 } TasmAsrDir;
 
 typedef enum TasmAsrItemKind {
