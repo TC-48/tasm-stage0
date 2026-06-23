@@ -94,6 +94,7 @@ StringView tasm_dir_kind_to_str(TasmAsrDirKind dk) {
     case TASM_DIR_GLOBAL:  return SV("global");
     case TASM_DIR_LOCAL:   return SV("local");
     case TASM_DIR_WEAK:    return SV("weak");
+    case TASM_DIR_EXTERN:  return SV("extern");
     case TASM_DIR_SECTION: return SV("section");
     }
     TC48_UNREACHABLE_ENUM_VAL(TasmAsrDirKind, dk);

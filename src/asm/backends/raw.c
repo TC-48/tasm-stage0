@@ -112,6 +112,7 @@ static bool lower_directive(TasmBackendRaw* as, const TasmAsrDir* dir, tc48_memo
     case TASM_DIR_WEAK:
     case TASM_DIR_LOCAL:
     case TASM_DIR_GLOBAL:
+    case TASM_DIR_EXTERN:
     case TASM_DIR_SECTION:
         tasm_report_error(as->diag, dir->span, "directive unsupported in raw mode");
         return false;

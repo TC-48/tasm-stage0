@@ -466,7 +466,7 @@ tc48_word tasm_get_directive_size(TasmDiagEngine* diag, const TasmAsrDir* dir) {
 
     case TASM_DIR_ORG: case TASM_DIR_SECTION:
     case TASM_DIR_LOCAL: case TASM_DIR_GLOBAL:
-    case TASM_DIR_WEAK:
+    case TASM_DIR_WEAK: case TASM_DIR_EXTERN:
         return 0;
     }
     TC48_UNREACHABLE_ENUM_VAL(TasmAsrDirKind, dir->kind);

@@ -21,6 +21,7 @@ typedef enum TasmAsrDirKind {
 
     TASM_DIR_ORG,
     TASM_DIR_SECTION,
+    TASM_DIR_EXTERN,
     TASM_DIR_GLOBAL,
     TASM_DIR_LOCAL,
     TASM_DIR_WEAK,
