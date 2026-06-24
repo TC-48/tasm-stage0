@@ -103,7 +103,7 @@ static int link_tobj(const char* obj_path, const char* exe_path) {
     }
 
     tc48_memory* exe = NULL;
-    tobj_link_result res = tobj_to_raw_exe(obj, NULL, &exe);
+    tobj_link_result res = tobj_to_raw_exe((tobj_param){ .data = obj }, &exe);
     if (res.code != TOBJ_LINK_SUCCESS) {
         tobj_print_link_error(res, &print_error);
         tc48_mem_free(obj);
