@@ -1,0 +1,21 @@
+%section "code"
+  start:
+    set r1, 10
+    set r2, 20
+    push .resume
+    jmp func
+  .resume:
+    cmp! r3, 30
+    if(eq) out raz, 0sQQQQQQQQQ
+  .err:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ
+
+%section "data"
+w: %word 123
+
+%section "code"
+  %global func
+  func:
+    add r3, r1, r2
+    pop rip

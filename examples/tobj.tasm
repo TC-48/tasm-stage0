@@ -1,0 +1,7 @@
+%section "code"
+start:
+    set r0, 100
+    halt
+
+%section "data"
+num: %word 123

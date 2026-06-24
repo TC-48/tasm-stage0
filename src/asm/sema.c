@@ -4,6 +4,39 @@
 #include <tc48/cpu/regs.h>
 #include <tc48/macros.h>
 
+static bool is_a_operand(const TasmInstr* instr, usize i) {
+    if (instr->opcode != TASM_OP_LOAD && instr->opcode != TASM_OP_STORE &&
+        instr->opcode != TASM_OP_IN && instr->opcode != TASM_OP_OUT) {
+        return false;
+    }
+
+    if (instr->opcode == TASM_OP_LOAD || instr->opcode == TASM_OP_IN) {
+        if (instr->num_operands == 2) {
+            return i == 1;
+        } else if (instr->num_operands == 3) {
+            if (instr->operands[1].kind != TASM_OPERAND_REG) {
+                return i == 1;
+            } else if (instr->operands[2].kind != TASM_OPERAND_REG) {
+                return i == 2;
+            }
+        }
+    } else if (instr->opcode == TASM_OP_STORE || instr->opcode == TASM_OP_OUT) {
+        if (instr->operands[0].kind != TASM_OPERAND_REG) {
+            return false;
+        }
+        if (instr->num_operands == 2) {
+            return i == 1;
+        } else if (instr->num_operands == 3) {
+            if (instr->operands[1].kind != TASM_OPERAND_REG) {
+                return i == 1;
+            } else if (instr->operands[2].kind != TASM_OPERAND_REG) {
+                return i == 2;
+            }
+        }
+    }
+    return false;
+}
+
 bool tasm_validate_and_inspect(
     TasmDiagEngine* diag, const TasmInstr* instr,
     enum tc48_instr_format* fmt, enum tc48_operand_width* width
@@ -16,11 +49,22 @@ bool tasm_validate_and_inspect(
                       instr->opcode == TASM_OP_DLOAD || instr->opcode == TASM_OP_ISTORE);
 
     for (usize i = 0; i < instr->num_operands; i++) {
+        if (is_a_operand(instr, i)) {
+            if (instr->operands[i].kind == TASM_OPERAND_REG) {
+                if (instr->operands[i].reg.width != TASM_WIDTH_48) {
+                    tasm_report_error(diag, instr->operands[i].span,
+                        "address operand must be 48-trit (e.g., r0, r0:w)");
+                    return false;
+                }
+            }
+            continue;
+        }
+
         if (instr->operands[i].kind == TASM_OPERAND_REG) {
             if (is_addr_op && i > 0) {
                 if (instr->operands[i].reg.width != TASM_WIDTH_48) {
                     tasm_report_error(diag, instr->operands[i].span,
-                        "memory address register must be 48-bit (e.g., r0, r0:w)");
+                        "memory address register must be 48-trit (e.g., r0, r0:w)");
                     return false;
                 }
                 continue;
@@ -32,6 +76,13 @@ bool tasm_validate_and_inspect(
             if (inferred_width == TASM_WIDTH_NONE) {
                 inferred_width = op_width;
             } else if (inferred_width != op_width) {
+                tasm_report_error(diag, instr->span, "conflicting operand widths");
+                return false;
+            }
+        } else if (instr->operands[i].kind == TASM_OPERAND_LABEL) {
+            if (inferred_width == TASM_WIDTH_NONE) {
+                inferred_width = TASM_WIDTH_48;
+            } else if (inferred_width != TASM_WIDTH_48) {
                 tasm_report_error(diag, instr->span, "conflicting operand widths");
                 return false;
             }
@@ -472,3 +523,32 @@ tc48_word tasm_get_directive_size(TasmDiagEngine* diag, const TasmAsrDir* dir) {
     TC48_UNREACHABLE_ENUM_VAL(TasmAsrDirKind, dir->kind);
 }
 
+
+bool tasm_get_instr_imm_offset(const TasmInstr* instr, tc48_half* out_off) {
+    enum tc48_instr_format fmt;
+    enum tc48_operand_width width;
+    if (!tasm_validate_and_inspect(NULL, instr, &fmt, &width)) {
+        return false;
+    }
+
+    const tc48_half HEADER_TRYTES = 2;
+    const tc48_half REG_TRYTES    = 1;
+
+    switch (fmt) {
+    case TC48_INSTR_FORMAT_RI:
+        *out_off = HEADER_TRYTES + REG_TRYTES;
+        return true;
+    case TC48_INSTR_FORMAT_RRI:
+        *out_off = HEADER_TRYTES + 2 * REG_TRYTES;
+        return true;
+    case TC48_INSTR_FORMAT_IRR:
+    case TC48_INSTR_FORMAT_IR:
+        *out_off = HEADER_TRYTES;
+        return true;
+    case TC48_INSTR_FORMAT_RRA:
+        *out_off = HEADER_TRYTES + 2 * REG_TRYTES;
+        return true;
+    default:
+        return false;
+    }
+}

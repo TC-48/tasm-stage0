@@ -11,6 +11,8 @@ TasmAsrDirMapping tasm_directive_map[] = {
     MAP("string",  TASM_DIR_STRING),
 
     MAP("org",     TASM_DIR_ORG),
+    MAP("section", TASM_DIR_SECTION),
+    MAP("extern",  TASM_DIR_EXTERN),
     MAP("global",  TASM_DIR_GLOBAL),
     MAP("local",   TASM_DIR_LOCAL),
     MAP("weak",    TASM_DIR_WEAK),

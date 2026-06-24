@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include <unistd.h>
 #include <sys/wait.h>
@@ -16,6 +17,9 @@
 #include <tc48/mem.h>
 #include <tc48/cpu.h>
 #include <tc48/bus.h>
+#include <tc48/util.h>
+
+#include <tobj/link.h>
 
 void print_pass(const char* test_name) {
     bool ansi = isatty(STDERR_FILENO);
@@ -30,7 +34,7 @@ void print_fail(const char* test_name, tc48_word tret) {
     fprintf(stderr, "%s[FAIL]%s test '%s' failed with code %llu\n", red, reset, test_name, (unsigned long long)tret);
 }
 
-void print_error(const char* fmt, ...) {
+int print_error(const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     bool ansi = isatty(STDERR_FILENO);
@@ -40,6 +44,7 @@ void print_error(const char* fmt, ...) {
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
     va_end(ap);
+    return 0;
 }
 
 
@@ -52,7 +57,7 @@ void print_error(const char* fmt, ...) {
 #define RET_ERR  2
 #define RET_TIME 3
 
-int compile(const char* tasm_path, const char* input_path, const char* temp_path) {
+int compile(const char* tasm_path, const char* input_path, const char* output_path, bool tobj) {
     pid_t pid = fork();
     if (pid == -1) {
         perror("fork");
@@ -60,10 +65,13 @@ int compile(const char* tasm_path, const char* input_path, const char* temp_path
     }
 
     if (pid == 0) {
-        const char* args[] = { tasm_path, input_path, "-o", temp_path, NULL };
-        // this cast is probably unsafe but since execve api is shit,
-        // i guess there is no better way. if it works don't touch it or sth.
-        execve(tasm_path, (char* const*)args, NULL);
+        if (tobj) {
+            const char* args[] = { tasm_path, "-f", "tobj", input_path, "-o", output_path, NULL };
+            execve(tasm_path, (char* const*)args, NULL);
+        } else {
+            const char* args[] = { tasm_path, input_path, "-o", output_path, NULL };
+            execve(tasm_path, (char* const*)args, NULL);
+        }
         perror("execve");
         exit(1);
     } else {
@@ -77,6 +85,35 @@ int compile(const char* tasm_path, const char* input_path, const char* temp_path
         }
         return 1;
     }
+}
+
+static void object_path_from_exe(char* obj_path, size_t obj_path_size, const char* exe_path) {
+    size_t len = strlen(exe_path);
+    if (len > 5 && strcmp(exe_path + len - 5, ".t48b") == 0) {
+        snprintf(obj_path, obj_path_size, "%.*s.obj.t48b", (int)(len - 5), exe_path);
+    } else {
+        snprintf(obj_path, obj_path_size, "%s.obj.t48b", exe_path);
+    }
+}
+
+static int link_tobj(const char* obj_path, const char* exe_path) {
+    tc48_memory* obj = tc48_load_t48b(obj_path);
+    if (obj == NULL) {
+        return RET_ERR;
+    }
+
+    tc48_memory* exe = NULL;
+    tobj_link_result res = tobj_to_raw_exe(obj, NULL, &exe);
+    if (res.code != TOBJ_LINK_SUCCESS) {
+        tobj_print_link_error(res, &print_error);
+        tc48_mem_free(obj);
+        return RET_ERR;
+    }
+
+    tc48_mem_save(exe, exe_path);
+    tc48_mem_free(exe);
+    tc48_mem_free(obj);
+    return RET_PASS;
 }
 
 #define TRET_UNSET 9999999999999999
@@ -141,8 +178,8 @@ int run(const char* temp_path, const char* test_name) {
 }
 
 int main(int argc, const char* argv[]) {
-    if (argc != 5) {
-        fprintf(stderr, "usage: %s <path-to-tasm> <input.tasm> <temp.t48b> <test-name>\n", argv[0]);
+    if (argc != 6) {
+        fprintf(stderr, "usage: %s <path-to-tasm> <input.tasm> <temp.t48b> <test-name> <raw|tobj>\n", argv[0]);
         return 1;
     }
 
@@ -150,8 +187,26 @@ int main(int argc, const char* argv[]) {
     const char* input_path = argv[2];
     const char* temp_path  = argv[3];
     const char* test_name  = argv[4];
+    const char* mode       = argv[5];
 
-    if (compile(tasm_path, input_path, temp_path) != 0) {
+    bool tobj = strcmp(mode, "tobj") == 0;
+    if (!tobj && strcmp(mode, "raw") != 0) {
+        print_error("invalid mode '%s' (expected 'raw' or 'tobj')", mode);
+        return RET_ERR;
+    }
+
+    char obj_path[4096];
+    const char* compile_out = temp_path;
+    if (tobj) {
+        object_path_from_exe(obj_path, sizeof obj_path, temp_path);
+        compile_out = obj_path;
+    }
+
+    if (compile(tasm_path, input_path, compile_out, tobj) != 0) {
+        return RET_ERR;
+    }
+
+    if (tobj && link_tobj(obj_path, temp_path) != RET_PASS) {
         return RET_ERR;
     }
 

@@ -8,3 +8,4 @@ bool tasm_validate_and_inspect(
 
 tc48_word tasm_get_instr_size(TasmDiagEngine* daig, const TasmInstr* instr);
 tc48_word tasm_get_directive_size(TasmDiagEngine* diag, const TasmAsrDir* dir);
+bool tasm_get_instr_imm_offset(const TasmInstr* instr, tc48_half* out_off);
