@@ -4,11 +4,15 @@ E2E_OUT_DIR   := build/$(BUILD)/e2e
 E2E_RUNNER    := $(BIN_DIR)/e2e-runner$(EXE_EXT)
 
 E2E_RAW_TESTS  := $(wildcard $(E2E_CASES_DIR)/raw/*.tasm)
-E2E_TOBJ_TESTS := $(wildcard $(E2E_CASES_DIR)/tobj/*.tasm)
+E2E_TOBJ_FILES  := $(wildcard $(E2E_CASES_DIR)/tobj/*.tasm)
+E2E_TOBJ_DIRS   := $(wildcard $(E2E_CASES_DIR)/tobj/*/)
+E2E_TOBJ_TESTS  := $(E2E_TOBJ_FILES) $(E2E_TOBJ_DIRS)
 
 E2E_RAW_RESULTS  := $(patsubst $(E2E_CASES_DIR)/raw/%.tasm,$(E2E_OUT_DIR)/raw/%.done,$(E2E_RAW_TESTS))
-E2E_TOBJ_RESULTS := $(patsubst $(E2E_CASES_DIR)/tobj/%.tasm,$(E2E_OUT_DIR)/tobj/%.done,$(E2E_TOBJ_TESTS))
-E2E_RESULTS      := $(E2E_RAW_RESULTS) $(E2E_TOBJ_RESULTS)
+E2E_TOBJ_FILE_RESULTS := $(patsubst $(E2E_CASES_DIR)/tobj/%.tasm,$(E2E_OUT_DIR)/tobj/%.done,$(E2E_TOBJ_FILES))
+E2E_TOBJ_DIR_RESULTS  := $(patsubst $(E2E_CASES_DIR)/tobj/%/,$(E2E_OUT_DIR)/tobj/%.done,$(E2E_TOBJ_DIRS))
+E2E_TOBJ_RESULTS      := $(E2E_TOBJ_FILE_RESULTS) $(E2E_TOBJ_DIR_RESULTS)
+E2E_RESULTS           := $(E2E_RAW_RESULTS) $(E2E_TOBJ_RESULTS)
 
 .PHONY: e2e-test e2e-clean
 
@@ -24,9 +28,14 @@ $(E2E_OUT_DIR)/tobj/%.done: $(E2E_CASES_DIR)/tobj/%.tasm $(E2E_RUNNER) $(TARGET)
 	@$(E2E_RUNNER) $(TARGET) $< $(patsubst %.done,%.t48b,$@) tobj/$* tobj
 	@touch $@
 
-$(E2E_RUNNER): $(E2E_DIR)/run.c $(EMU_LIB_STATIC) $(TOBJ_LIB_STATIC)
+$(E2E_OUT_DIR)/tobj/%.done: $(E2E_CASES_DIR)/tobj/% $(E2E_RUNNER) $(TARGET)
 	@$(call CMD_MKDIR_P,$(dir $@))
-	$(CC) $(CFLAGS) $< $(EMU_LIB_STATIC) $(TOBJ_LIB_STATIC) $(LDFLAGS) -o $@
+	@$(E2E_RUNNER) $(TARGET) $< $(patsubst %.done,%.t48b,$@) tobj/$* tobj
+	@touch $@
+
+$(E2E_RUNNER): $(E2E_DIR)/run.c $(EMU_LIB_STATIC) $(TOBJ_LIB_STATIC) $(LIB_STATIC)
+	@$(call CMD_MKDIR_P,$(dir $@))
+	$(CC) $(CFLAGS) $< $(EMU_LIB_STATIC) $(TOBJ_LIB_STATIC) $(LIB_STATIC) $(LDFLAGS) -o $@
 
 e2e-clean:
 	@$(call CMD_RM_RF,$(E2E_OUT_DIR))

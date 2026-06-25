@@ -1,0 +1,6 @@
+%section "code"
+  %global accumulate_range
+  accumulate_range:
+    sub r2, r1, 1
+    umul r1, r2
+    udiv r1, 2

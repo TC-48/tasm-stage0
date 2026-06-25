@@ -1,0 +1,12 @@
+%section "code"
+  %extern exit_success, exit_failure
+  %extern accumulate_range
+  start:
+    set r0, 20
+    push .resume
+    jmp accumulate_range
+  .resume:
+    cmp! r1, 190
+    if(ne) jmp exit_failure
+
+    jmp exit_success

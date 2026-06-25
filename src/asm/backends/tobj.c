@@ -205,10 +205,15 @@ static void handle_label_definition(TasmBackendTObj* as, TasmAsrItem* item) {
         as->current_global_idx = item->id;
     }
 
+    SectionRelAddr addr = as->item_addrs[item->id];
+    if (addr.section_idx == SENTINEL) {
+        tasm_report_error(as->diag, item->span, "label defined before %%section");
+        return;
+    }
+
     SymbolMeta* meta = &as->sym_map[item->id];
     usize parent_global_id = label->is_local ? as->current_global_idx : SENTINEL;
     usize name_idx = register_symbol_name(as, label, parent_global_id);
-    SectionRelAddr addr = as->item_addrs[item->id];
 
     // local by default (!)
     tobj_binding binding = TOBJ_BINDING_LOCAL;
@@ -243,7 +248,7 @@ static void handle_extern_directive(TasmBackendTObj* as, TasmAsrDir* dir) {
         usize name_idx = register_string(&as->bldr, op->label.name);
         tobj_bldr_add_symbol(&as->bldr, &(tobj_bldr_symbol) {
             .name_idx    = name_idx,
-            .section_idx = TOBJ_SECTION_UNDEF,
+            .section_idx = SENTINEL,
             .offset      = 0,
             .size        = 0,
             .binding     = TOBJ_BINDING_GLOBAL,

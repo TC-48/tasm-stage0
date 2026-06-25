@@ -4,6 +4,11 @@
 /// of this approach is that make supports concurrency by default
 /// so i guess it will be faster.
 
+// TODO: make the test runner cross-platform
+
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -11,7 +16,10 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <dirent.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <linux/limits.h>
 
 #include <tc48/system.h>
 #include <tc48/mem.h>
@@ -19,7 +27,12 @@
 #include <tc48/bus.h>
 #include <tc48/util.h>
 
+#include <tasm/util/argparse.h>
+
 #include <tobj/link.h>
+#include <tobj/merge.h>
+
+#include <vector/vector.h>
 
 void print_pass(const char* test_name) {
     bool ansi = isatty(STDERR_FILENO);
@@ -57,7 +70,7 @@ int print_error(const char* fmt, ...) {
 #define RET_ERR  2
 #define RET_TIME 3
 
-int compile(const char* tasm_path, const char* input_path, const char* output_path, bool tobj) {
+int compile(const char* tasm_path, const char* input_path, const char* output_path, TasmOutputFormat format) {
     pid_t pid = fork();
     if (pid == -1) {
         perror("fork");
@@ -65,7 +78,7 @@ int compile(const char* tasm_path, const char* input_path, const char* output_pa
     }
 
     if (pid == 0) {
-        if (tobj) {
+        if (format == TASM_FORMAT_TOBJ) {
             const char* args[] = { tasm_path, "-f", "tobj", input_path, "-o", output_path, NULL };
             execve(tasm_path, (char* const*)args, NULL);
         } else {
@@ -87,33 +100,14 @@ int compile(const char* tasm_path, const char* input_path, const char* output_pa
     }
 }
 
-static void object_path_from_exe(char* obj_path, size_t obj_path_size, const char* exe_path) {
-    size_t len = strlen(exe_path);
-    if (len > 5 && strcmp(exe_path + len - 5, ".t48b") == 0) {
-        snprintf(obj_path, obj_path_size, "%.*s.obj.t48b", (int)(len - 5), exe_path);
-    } else {
-        snprintf(obj_path, obj_path_size, "%s.obj.t48b", exe_path);
-    }
-}
+void replace_extension(char* dest, size_t size, const char* src, const char* new_ext) {
+    const char* dot = strrchr(src, '.');
+    size_t base_len =
+        dot != NULL
+            ? (size_t)(dot - src)
+            : strlen(src);
 
-static int link_tobj(const char* obj_path, const char* exe_path) {
-    tc48_memory* obj = tc48_load_t48b(obj_path);
-    if (obj == NULL) {
-        return RET_ERR;
-    }
-
-    tc48_memory* exe = NULL;
-    tobj_link_result res = tobj_to_raw_exe((tobj_param){ .data = obj }, &exe);
-    if (res.code != TOBJ_LINK_SUCCESS) {
-        tobj_print_link_error(res, &print_error);
-        tc48_mem_free(obj);
-        return RET_ERR;
-    }
-
-    tc48_mem_save(exe, exe_path);
-    tc48_mem_free(exe);
-    tc48_mem_free(obj);
-    return RET_PASS;
+    snprintf(dest, size, "%.*s.%s", (int)base_len, src, new_ext);
 }
 
 #define TRET_UNSET 9999999999999999
@@ -143,10 +137,10 @@ tc48_device_class test_dev_class = {
 #define TEST_DEV_ADDR 7625597484986
 
 #define MAX_STEPS 1000000
-int run(const char* temp_path, const char* test_name) {
+int run(const char* exe_path, const char* test_name) {
     tc48_system sys;
     tc48_system_init(&sys, MEM_SIZE);
-    tc48_mem_open(sys.bus.mem, temp_path);
+    tc48_mem_open(sys.bus.mem, exe_path);
 
     tc48_bus_register_device(&sys.bus, &test_dev_class, TEST_DEV_ADDR);
 
@@ -177,6 +171,94 @@ int run(const char* temp_path, const char* test_name) {
     }
 }
 
+VECTOR_DECLARE(object_list, objects, tc48_memory*);
+VECTOR_DEFINE (object_list, objects, tc48_memory*);
+
+int compile_and_link_tobjs(const char* exe_path, const char* tasm_path, const char* input_path, bool is_dir) {
+    tc48_memory* object;
+    if (is_dir) {
+        object_list objects = {0};
+
+        DIR* dir = opendir(input_path);
+        struct dirent* ent;
+        while ((ent = readdir(dir)) != NULL) {
+            char actual_path[PATH_MAX];
+            snprintf(actual_path, PATH_MAX, "%s/%s", input_path, ent->d_name);
+
+            // "extension" yeah it is definitely not just extension but it should work
+            char extension_in_quotation[PATH_MAX];
+            snprintf(extension_in_quotation, PATH_MAX, "%s.obj.t48b", ent->d_name);
+
+            char obj_path[PATH_MAX];
+            replace_extension(obj_path, sizeof obj_path, exe_path, extension_in_quotation);
+
+            int ret = compile(tasm_path, actual_path, obj_path, TASM_FORMAT_TOBJ);
+            if (ret != 0) return ret;
+
+            tc48_memory* obj = tc48_load_t48b(obj_path);
+            if (obj == NULL) return RET_ERR;
+            objects_push(&objects, obj);
+        }
+
+        size_t count = VECTOR_SIZE(&objects);
+
+        // maybe VLAs aren't the best solution
+        // but if it works, don't touch it!
+        tobj_param params[count];
+        for (size_t i = 0; i < count; ++i) {
+            params[i] = (tobj_param) { .data = objects.begin[i] };
+        }
+
+        object = tobj_merge(params, (tc48_half)count);
+        for (size_t i = 0; i < count; ++i) {
+            tc48_mem_free(objects.begin[i]);
+        }
+        objects_free(&objects);
+    } else {
+        char obj_path[PATH_MAX];
+        replace_extension(obj_path, PATH_MAX, exe_path, "obj.t48b");
+
+        int ret = compile(tasm_path, input_path, obj_path, TASM_FORMAT_TOBJ);
+        if (ret != 0) return ret;
+
+        object = tc48_load_t48b(obj_path);
+    }
+
+
+    if (object == NULL) return RET_ERR;
+
+    tc48_memory* exe = NULL;
+    tobj_link_result res = tobj_to_raw_exe((tobj_param){ .data = object }, &exe);
+    if (res.code != TOBJ_LINK_SUCCESS) {
+        tobj_print_link_error(res, &print_error);
+        tc48_mem_free(object);
+        return RET_ERR;
+    }
+
+    tc48_mem_save(exe, exe_path);
+    tc48_mem_free(exe);
+    tc48_mem_free(object);
+    return RET_PASS;
+}
+
+int compile_and_link_if_needed(const char* exe_path, const char* tasm_path, const char* input_path, TasmOutputFormat format) {
+    struct stat st;
+    if (stat(input_path, &st) == -1) {
+        perror("stat");
+        return RET_ERR;
+    }
+
+    switch (format) {
+    case TASM_FORMAT_TOBJ:
+        return compile_and_link_tobjs(exe_path, tasm_path, input_path, S_ISDIR(st.st_mode));
+    case TASM_FORMAT_RAW:
+        return compile(tasm_path, input_path, exe_path, TASM_FORMAT_RAW);
+    }
+
+    // to make the compiler happy
+    return RET_ERR;
+}
+
 int main(int argc, const char* argv[]) {
     if (argc != 6) {
         fprintf(stderr, "usage: %s <path-to-tasm> <input.tasm> <temp.t48b> <test-name> <raw|tobj>\n", argv[0]);
@@ -185,30 +267,18 @@ int main(int argc, const char* argv[]) {
 
     const char* tasm_path  = argv[1];
     const char* input_path = argv[2];
-    const char* temp_path  = argv[3];
+    const char* exe_path  = argv[3];
     const char* test_name  = argv[4];
     const char* mode       = argv[5];
 
-    bool tobj = strcmp(mode, "tobj") == 0;
-    if (!tobj && strcmp(mode, "raw") != 0) {
+    TasmOutputFormat format;
+    if (!tasm_ap_parse_format(mode, &format)) {
         print_error("invalid mode '%s' (expected 'raw' or 'tobj')", mode);
         return RET_ERR;
     }
 
-    char obj_path[4096];
-    const char* compile_out = temp_path;
-    if (tobj) {
-        object_path_from_exe(obj_path, sizeof obj_path, temp_path);
-        compile_out = obj_path;
-    }
+    int ret = compile_and_link_if_needed(exe_path, tasm_path, input_path, format);
+    if (ret != RET_PASS) return ret;
 
-    if (compile(tasm_path, input_path, compile_out, tobj) != 0) {
-        return RET_ERR;
-    }
-
-    if (tobj && link_tobj(obj_path, temp_path) != RET_PASS) {
-        return RET_ERR;
-    }
-
-    return run(temp_path, test_name);
+    return run(exe_path, test_name);
 }

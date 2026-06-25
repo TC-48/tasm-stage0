@@ -13,7 +13,7 @@ static inline bool streql(const char* a, const char* b) {
     return strcmp(a, b) == 0;
 }
 
-static bool parse_format(const char* arg, TasmOutputFormat* out) {
+bool tasm_ap_parse_format(const char* arg, TasmOutputFormat* out) {
     if (streql(arg, "raw")) {
         *out = TASM_FORMAT_RAW;
     } else if (streql(arg, "tobj") || streql(arg, "obj")) {
@@ -25,7 +25,7 @@ static bool parse_format(const char* arg, TasmOutputFormat* out) {
     return true;
 }
 
-static bool parse_preference(const char* arg, TasmPreference* out) {
+bool tasm_ap_parse_preference(const char* arg, TasmPreference* out) {
     if      (streql(arg, "never"))  *out = TASM_PREF_NEVER;
     else if (streql(arg, "auto"))   *out = TASM_PREF_AUTO;
     else if (streql(arg, "always")) *out = TASM_PREF_ALWAYS;
@@ -54,7 +54,7 @@ TasmArgparseResult tasm_parse_args(int argc, const char* argv[], TasmCmdline* ou
             return TASM_ARGPARSE_SKIP;
         } else if (streql(arg, "-f") || streql(arg, "--format")) {
             ADVANCE_ARG("format");
-            if (!parse_format(argv[i], &out->format)) {
+            if (!tasm_ap_parse_format(argv[i], &out->format)) {
                 return TASM_ARGPARSE_FAIL;
             }
         } else if (streql(arg, "-o") || streql(arg, "--output")) {
@@ -62,7 +62,7 @@ TasmArgparseResult tasm_parse_args(int argc, const char* argv[], TasmCmdline* ou
             out->output = argv[i];
         } else if (streql(arg, "--color")) {
             ADVANCE_ARG("argument");
-            if (!parse_preference(argv[i], &out->color)) {
+            if (!tasm_ap_parse_preference(argv[i], &out->color)) {
                 return TASM_ARGPARSE_FAIL;
             }
         } else if (arg[0] == '-') {

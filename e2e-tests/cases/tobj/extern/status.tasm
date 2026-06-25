@@ -1,0 +1,7 @@
+%section "code"
+  %global exit_success, exit_failure
+  exit_success:
+    out raz, 0sQQQQQQQQQ
+  exit_failure:
+    set r1, 1
+    out r1, 0sQQQQQQQQQ

@@ -32,4 +32,7 @@ typedef struct TasmCmdline {
 
 void tasm_print_help(const char* progname);
 
+bool tasm_ap_parse_format(const char* arg, TasmOutputFormat* out);
+bool tasm_ap_parse_preference(const char* arg, TasmPreference* out);
+
 TasmArgparseResult tasm_parse_args(int argc, const char* argv[], TasmCmdline* out);
